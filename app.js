@@ -1,3 +1,4 @@
+function _extends() { return _extends = Object.assign ? Object.assign.bind() : function (n) { for (var e = 1; e < arguments.length; e++) { var t = arguments[e]; for (var r in t) ({}).hasOwnProperty.call(t, r) && (n[r] = t[r]); } return n; }, _extends.apply(null, arguments); }
 // ─── MenuMetric PWA – compiled from JSX ──────────────────────────────────────
 const {
   useState,
@@ -2293,6 +2294,10 @@ const PAGES = [{
   id: 'stammdaten',
   label: 'Stammdaten',
   icon: '⚙️'
+}, {
+  id: 'pcm',
+  label: 'PCM',
+  icon: '🔗'
 }];
 
 // ── APP ───────────────────────────────────────────────────────────────────────
@@ -2348,7 +2353,11 @@ function App() {
     className: "page-bar-inner"
   }, currentPage?.icon, " ", currentPage?.label)), /*#__PURE__*/React.createElement("div", {
     className: "content"
-  }, page === 'dashboard' && /*#__PURE__*/React.createElement(Dashboard, sp), page === 'lager' && /*#__PURE__*/React.createElement(Lager, sp), page === 'wareneingang' && /*#__PURE__*/React.createElement(Wareneingang, sp), page === 'rezepturen' && /*#__PURE__*/React.createElement(Rezepturen, sp), page === 'bestellungen' && /*#__PURE__*/React.createElement(Bestellungen, sp), page === 'inventur' && /*#__PURE__*/React.createElement(Inventur, sp), page === 'stammdaten' && /*#__PURE__*/React.createElement(Stammdaten, sp)), /*#__PURE__*/React.createElement("nav", {
+  }, page === 'dashboard' && /*#__PURE__*/React.createElement(Dashboard, sp), page === 'lager' && /*#__PURE__*/React.createElement(Lager, sp), page === 'wareneingang' && /*#__PURE__*/React.createElement(Wareneingang, sp), page === 'rezepturen' && /*#__PURE__*/React.createElement(Rezepturen, sp), page === 'bestellungen' && /*#__PURE__*/React.createElement(Bestellungen, sp), page === 'inventur' && /*#__PURE__*/React.createElement(Inventur, sp), page === 'stammdaten' && /*#__PURE__*/React.createElement(Stammdaten, sp), page === 'pcm' && /*#__PURE__*/React.createElement(PCMModule, {
+    data: data,
+    setData: setData,
+    toast: addToast
+  })), /*#__PURE__*/React.createElement("nav", {
     className: "bottom-nav"
   }, PAGES.map(p => /*#__PURE__*/React.createElement("button", {
     key: p.id,
@@ -2366,3 +2375,1114 @@ function App() {
   }, p.icon), p.label)))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// ── PCM PROCARELINE SCHNITTSTELLE + AMPELSYSTEM ──────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+// Simulated PCM price catalog – Artikel × Lieferant × Gebinde
+// Ampellogik: günstigster EK-Preis (Stückpreis normiert) = Grün, mittlerer = Gelb, teuerster = Rot
+const PCM_KATALOG = [
+// Rinderhüfte (artikelId 1)
+{
+  artikelId: 1,
+  lieferantId: 1,
+  lieferantName: 'Frischmarkt GmbH',
+  pcmArtNr: 'FM-1042',
+  gebinde: [{
+    label: '1 kg (Stück)',
+    menge: 1,
+    einheit: 'kg',
+    ek: 14.50
+  }, {
+    label: '5 kg Vakuum',
+    menge: 5,
+    einheit: 'kg',
+    ek: 68.00
+  }, {
+    label: '10 kg Karton',
+    menge: 10,
+    einheit: 'kg',
+    ek: 132.00
+  }]
+}, {
+  artikelId: 1,
+  lieferantId: 3,
+  lieferantName: 'Großmarkt Nord',
+  pcmArtNr: 'GN-R081',
+  gebinde: [{
+    label: '1 kg (Stück)',
+    menge: 1,
+    einheit: 'kg',
+    ek: 13.20
+  }, {
+    label: '8 kg Karton',
+    menge: 8,
+    einheit: 'kg',
+    ek: 100.80
+  }, {
+    label: '16 kg Palette',
+    menge: 16,
+    einheit: 'kg',
+    ek: 195.20
+  }]
+}, {
+  artikelId: 1,
+  lieferantId: 2,
+  lieferantName: 'Weinhaus Becker',
+  pcmArtNr: null,
+  gebinde: [{
+    label: '1 kg (Stück)',
+    menge: 1,
+    einheit: 'kg',
+    ek: 16.90
+  }]
+},
+// Lachs frisch (artikelId 2)
+{
+  artikelId: 2,
+  lieferantId: 1,
+  lieferantName: 'Frischmarkt GmbH',
+  pcmArtNr: 'FM-2201',
+  gebinde: [{
+    label: '1 kg (Stück)',
+    menge: 1,
+    einheit: 'kg',
+    ek: 18.90
+  }, {
+    label: '5 kg Kiste',
+    menge: 5,
+    einheit: 'kg',
+    ek: 90.00
+  }, {
+    label: '10 kg Kiste',
+    menge: 10,
+    einheit: 'kg',
+    ek: 174.00
+  }]
+}, {
+  artikelId: 2,
+  lieferantId: 3,
+  lieferantName: 'Großmarkt Nord',
+  pcmArtNr: 'GN-F204',
+  gebinde: [{
+    label: '1 kg (Stück)',
+    menge: 1,
+    einheit: 'kg',
+    ek: 17.40
+  }, {
+    label: '6 kg Kiste',
+    menge: 6,
+    einheit: 'kg',
+    ek: 98.40
+  }]
+},
+// Tomaten Kiste (artikelId 3)
+{
+  artikelId: 3,
+  lieferantId: 3,
+  lieferantName: 'Großmarkt Nord',
+  pcmArtNr: 'GN-G055',
+  gebinde: [{
+    label: '1 Kiste (6 kg)',
+    menge: 1,
+    einheit: 'Kiste',
+    ek: 22.00
+  }, {
+    label: '3 Kisten',
+    menge: 3,
+    einheit: 'Kiste',
+    ek: 63.00
+  }, {
+    label: '6 Kisten',
+    menge: 6,
+    einheit: 'Kiste',
+    ek: 120.00
+  }]
+}, {
+  artikelId: 3,
+  lieferantId: 1,
+  lieferantName: 'Frischmarkt GmbH',
+  pcmArtNr: 'FM-3310',
+  gebinde: [{
+    label: '1 Kiste (6 kg)',
+    menge: 1,
+    einheit: 'Kiste',
+    ek: 24.50
+  }, {
+    label: '4 Kisten',
+    menge: 4,
+    einheit: 'Kiste',
+    ek: 94.00
+  }]
+},
+// Chianti DOC (artikelId 4)
+{
+  artikelId: 4,
+  lieferantId: 2,
+  lieferantName: 'Weinhaus Becker',
+  pcmArtNr: 'WB-W441',
+  gebinde: [{
+    label: '1 Flasche',
+    menge: 1,
+    einheit: 'Fl',
+    ek: 8.50
+  }, {
+    label: '6er Karton',
+    menge: 6,
+    einheit: 'Fl',
+    ek: 48.00
+  }, {
+    label: '12er Karton',
+    menge: 12,
+    einheit: 'Fl',
+    ek: 91.20
+  }]
+}, {
+  artikelId: 4,
+  lieferantId: 3,
+  lieferantName: 'Großmarkt Nord',
+  pcmArtNr: 'GN-W210',
+  gebinde: [{
+    label: '1 Flasche',
+    menge: 1,
+    einheit: 'Fl',
+    ek: 9.80
+  }, {
+    label: '6er Karton',
+    menge: 6,
+    einheit: 'Fl',
+    ek: 56.40
+  }]
+},
+// Butter (artikelId 5)
+{
+  artikelId: 5,
+  lieferantId: 3,
+  lieferantName: 'Großmarkt Nord',
+  pcmArtNr: 'GN-M012',
+  gebinde: [{
+    label: '1 Pkg 250g',
+    menge: 1,
+    einheit: 'Pkg',
+    ek: 1.85
+  }, {
+    label: '10er Pack',
+    menge: 10,
+    einheit: 'Pkg',
+    ek: 17.50
+  }, {
+    label: '20er Karton',
+    menge: 20,
+    einheit: 'Pkg',
+    ek: 33.00
+  }]
+}, {
+  artikelId: 5,
+  lieferantId: 1,
+  lieferantName: 'Frischmarkt GmbH',
+  pcmArtNr: 'FM-M099',
+  gebinde: [{
+    label: '1 Pkg 250g',
+    menge: 1,
+    einheit: 'Pkg',
+    ek: 1.99
+  }, {
+    label: '10er Pack',
+    menge: 10,
+    einheit: 'Pkg',
+    ek: 18.90
+  }]
+},
+// Mehl (artikelId 6)
+{
+  artikelId: 6,
+  lieferantId: 3,
+  lieferantName: 'Großmarkt Nord',
+  pcmArtNr: 'GN-T003',
+  gebinde: [{
+    label: '1 kg',
+    menge: 1,
+    einheit: 'kg',
+    ek: 0.95
+  }, {
+    label: '10 kg Sack',
+    menge: 10,
+    einheit: 'kg',
+    ek: 8.80
+  }, {
+    label: '25 kg Sack',
+    menge: 25,
+    einheit: 'kg',
+    ek: 20.00
+  }, {
+    label: '50 kg Palette',
+    menge: 50,
+    einheit: 'kg',
+    ek: 37.50
+  }]
+}, {
+  artikelId: 6,
+  lieferantId: 1,
+  lieferantName: 'Frischmarkt GmbH',
+  pcmArtNr: 'FM-T041',
+  gebinde: [{
+    label: '1 kg',
+    menge: 1,
+    einheit: 'kg',
+    ek: 1.10
+  }, {
+    label: '10 kg Sack',
+    menge: 10,
+    einheit: 'kg',
+    ek: 10.20
+  }]
+},
+// Prosecco (artikelId 7)
+{
+  artikelId: 7,
+  lieferantId: 2,
+  lieferantName: 'Weinhaus Becker',
+  pcmArtNr: 'WB-W220',
+  gebinde: [{
+    label: '1 Flasche',
+    menge: 1,
+    einheit: 'Fl',
+    ek: 5.20
+  }, {
+    label: '6er Karton',
+    menge: 6,
+    einheit: 'Fl',
+    ek: 29.40
+  }, {
+    label: '12er Karton',
+    menge: 12,
+    einheit: 'Fl',
+    ek: 56.40
+  }]
+}, {
+  artikelId: 7,
+  lieferantId: 3,
+  lieferantName: 'Großmarkt Nord',
+  pcmArtNr: 'GN-W310',
+  gebinde: [{
+    label: '1 Flasche',
+    menge: 1,
+    einheit: 'Fl',
+    ek: 5.80
+  }, {
+    label: '6er Karton',
+    menge: 6,
+    einheit: 'Fl',
+    ek: 33.60
+  }]
+},
+// Kartoffeln (artikelId 8)
+{
+  artikelId: 8,
+  lieferantId: 3,
+  lieferantName: 'Großmarkt Nord',
+  pcmArtNr: 'GN-G120',
+  gebinde: [{
+    label: '1 kg',
+    menge: 1,
+    einheit: 'kg',
+    ek: 0.70
+  }, {
+    label: '10 kg Netz',
+    menge: 10,
+    einheit: 'kg',
+    ek: 6.50
+  }, {
+    label: '25 kg Sack',
+    menge: 25,
+    einheit: 'kg',
+    ek: 15.00
+  }]
+}, {
+  artikelId: 8,
+  lieferantId: 1,
+  lieferantName: 'Frischmarkt GmbH',
+  pcmArtNr: 'FM-G205',
+  gebinde: [{
+    label: '1 kg',
+    menge: 1,
+    einheit: 'kg',
+    ek: 0.85
+  }, {
+    label: '10 kg Netz',
+    menge: 10,
+    einheit: 'kg',
+    ek: 8.00
+  }]
+}];
+
+// Ampel-Logik: normierter Stückpreis (EK / Menge) bestimmt Farbe
+function getAmpel(artikelId) {
+  const anbieter = PCM_KATALOG.filter(k => k.artikelId === artikelId);
+  if (anbieter.length === 0) return {};
+  // Stückpreis = günstigstes Gebinde je Lieferant (pro Einheit normiert)
+  const preise = anbieter.map(a => {
+    const minGebinde = a.gebinde.reduce((best, g) => g.ek / g.menge < best.ek / best.menge ? g : best, a.gebinde[0]);
+    return {
+      lieferantId: a.lieferantId,
+      stueckpreis: minGebinde.ek / minGebinde.menge
+    };
+  });
+  const sorted = [...preise].sort((a, b) => a.stueckpreis - b.stueckpreis);
+  const min = sorted[0].stueckpreis;
+  const max = sorted[sorted.length - 1].stueckpreis;
+  const result = {};
+  preise.forEach(p => {
+    if (sorted.length === 1) {
+      result[p.lieferantId] = 'green';
+      return;
+    }
+    if (p.stueckpreis === min) result[p.lieferantId] = 'green';else if (p.stueckpreis === max) result[p.lieferantId] = 'red';else result[p.lieferantId] = 'yellow';
+  });
+  return result;
+}
+
+// PCM CSS additions
+const pcmCss = `
+  /* PCM LOGIN */
+  .pcm-login-wrap { max-width:440px; margin:40px auto; }
+  .pcm-logo-bar { display:flex; align-items:center; gap:14px; margin-bottom:28px; padding:20px; background:white; border-radius:16px; border:1.5px solid #E2E8F0; }
+  .pcm-logo-icon { font-size:36px; }
+  .pcm-logo-text { font-size:20px; font-weight:900; color:#B91C1C; letter-spacing:-0.5px; }
+  .pcm-logo-sub { font-size:12px; color:#6B7280; font-weight:600; }
+  .pcm-status { display:flex; align-items:center; gap:8px; padding:10px 14px; border-radius:10px; font-size:13px; font-weight:700; margin-bottom:14px; }
+  .pcm-status.connected { background:#DCFCE7; color:#16A34A; border:1.5px solid #BBF7D0; }
+  .pcm-status.disconnected { background:#FEE2E2; color:#DC2626; border:1.5px solid #FECACA; }
+  .pcm-status.syncing { background:#EFF6FF; color:#2563EB; border:1.5px solid #BFDBFE; }
+
+  /* AMPEL */
+  .ampel-wrap { display:flex; align-items:center; gap:6px; }
+  .ampel-dot { width:14px; height:14px; border-radius:50%; flex-shrink:0; }
+  .ampel-dot.green { background:#16A34A; box-shadow:0 0 6px #16A34A66; }
+  .ampel-dot.yellow { background:#D97706; box-shadow:0 0 6px #D9770666; }
+  .ampel-dot.red { background:#DC2626; box-shadow:0 0 6px #DC262666; }
+  .ampel-dot.gray { background:#CBD5E1; }
+
+  /* PREISVERGLEICH TABELLE */
+  .pv-card { background:white; border:1.5px solid #E2E8F0; border-radius:16px; overflow:hidden; margin-bottom:14px; }
+  .pv-header { padding:16px; background:#F4F6F9; border-bottom:1.5px solid #E2E8F0; }
+  .pv-artikel { font-size:16px; font-weight:900; color:#0F172A; }
+  .pv-sub { font-size:12px; color:#6B7280; font-weight:600; margin-top:2px; }
+  .pv-lief-row { display:flex; align-items:stretch; border-bottom:1px solid #E2E8F0; transition:background 0.1s; }
+  .pv-lief-row:last-child { border-bottom:none; }
+  .pv-lief-row.red-row { background:#FFF5F5; opacity:0.75; }
+  .pv-lief-row.green-row { background:#F0FDF4; }
+  .pv-lief-row.yellow-row { background:#FFFBEB; }
+  .pv-lief-info { padding:14px 16px; flex:1; min-width:0; }
+  .pv-lief-name { font-size:14px; font-weight:800; color:#0F172A; display:flex; align-items:center; gap:8px; }
+  .pv-artnr { font-size:11px; color:#94A3B8; font-weight:600; }
+  .pv-gebinde-list { margin-top:8px; display:flex; flex-direction:column; gap:6px; }
+  .pv-gebinde-item { display:flex; align-items:center; gap:8px; padding:8px 12px; border-radius:10px; background:#F4F6F9; border:1.5px solid #E2E8F0; cursor:pointer; transition:all 0.12s; }
+  .pv-gebinde-item:hover:not(.disabled) { border-color:#2563EB; background:#EFF6FF; }
+  .pv-gebinde-item.selected { border-color:#2563EB; background:#DBEAFE; }
+  .pv-gebinde-item.disabled { opacity:0.45; cursor:not-allowed; }
+  .pv-gebinde-label { flex:1; font-size:13px; font-weight:700; color:#0F172A; }
+  .pv-gebinde-ek { font-family:'JetBrains Mono',monospace; font-size:13px; font-weight:700; color:#2563EB; }
+  .pv-gebinde-pro { font-size:11px; color:#94A3B8; font-weight:600; }
+  .pv-ampel-col { width:56px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; padding:14px 8px; border-left:1px solid #E2E8F0; flex-shrink:0; }
+  .ampel-tower { display:flex; flex-direction:column; gap:4px; align-items:center; }
+  .ampel-light { width:16px; height:16px; border-radius:50%; border:1.5px solid rgba(0,0,0,0.1); }
+  .ampel-light.on-red { background:#DC2626; box-shadow:0 0 8px #DC262688; }
+  .ampel-light.on-yellow { background:#D97706; box-shadow:0 0 8px #D9770688; }
+  .ampel-light.on-green { background:#16A34A; box-shadow:0 0 8px #16A34A88; }
+  .ampel-light.off { background:#E5E7EB; }
+  .pv-locked { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10px; color:#DC2626; font-weight:800; }
+
+  /* WARENKORB */
+  .wk-fab { position:fixed; bottom:90px; right:20px; z-index:30; background:#2563EB; color:white; border:none; border-radius:50%; width:56px; height:56px; font-size:24px; cursor:pointer; box-shadow:0 4px 20px #2563EB55; display:flex; align-items:center; justify-content:center; transition:transform 0.15s; }
+  .wk-fab:active { transform:scale(0.92); }
+  .wk-count { position:absolute; top:-4px; right:-4px; background:#DC2626; color:white; font-size:10px; font-weight:900; min-width:18px; height:18px; border-radius:9px; display:flex; align-items:center; justify-content:center; border:2px solid white; padding:0 3px; }
+  .wk-row { display:flex; align-items:center; gap:10px; padding:13px 14px; border-bottom:1px solid #E2E8F0; }
+  .wk-row:last-child { border-bottom:none; }
+  .wk-name { flex:1; font-size:14px; font-weight:700; }
+  .wk-detail { font-size:12px; color:#6B7280; font-weight:600; }
+
+  /* SYNC ANIMATION */
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .spin { animation:spin 1s linear infinite; display:inline-block; }
+
+  /* LEGEND */
+  .legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:#475569; }
+`;
+
+// ── PCM CONNECTION STATE ───────────────────────────────────────────────────────
+function usePCM() {
+  const [pcmState, setPcmState] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('menumetric-pcm') || 'null');
+    } catch {
+      return null;
+    }
+  });
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState(null);
+  function connect(mandant, user, pw) {
+    setSyncing(true);
+    // Simulate PCM login + sync delay
+    return new Promise(resolve => {
+      setTimeout(() => {
+        const state = {
+          mandant,
+          user,
+          connected: true,
+          connectedAt: new Date().toISOString()
+        };
+        setPcmState(state);
+        localStorage.setItem('menumetric-pcm', JSON.stringify(state));
+        setLastSync(new Date());
+        setSyncing(false);
+        resolve(true);
+      }, 2200);
+    });
+  }
+  function disconnect() {
+    setPcmState(null);
+    localStorage.removeItem('menumetric-pcm');
+  }
+  function sync() {
+    setSyncing(true);
+    return new Promise(resolve => {
+      setTimeout(() => {
+        setSyncing(false);
+        setLastSync(new Date());
+        resolve();
+      }, 1800);
+    });
+  }
+  return {
+    pcmState,
+    syncing,
+    lastSync,
+    connect,
+    disconnect,
+    sync
+  };
+}
+
+// ── AMPEL TOWER COMPONENT ─────────────────────────────────────────────────────
+function AmpelTurm({
+  status
+}) {
+  return /*#__PURE__*/React.createElement("div", {
+    className: "ampel-tower"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: `ampel-light ${status === 'red' ? 'on-red' : 'off'}`
+  }), /*#__PURE__*/React.createElement("div", {
+    className: `ampel-light ${status === 'yellow' ? 'on-yellow' : 'off'}`
+  }), /*#__PURE__*/React.createElement("div", {
+    className: `ampel-light ${status === 'green' ? 'on-green' : 'off'}`
+  }));
+}
+
+// ── PCM LOGIN PAGE ─────────────────────────────────────────────────────────────
+function PCMLogin({
+  pcmState,
+  syncing,
+  lastSync,
+  connect,
+  disconnect,
+  sync,
+  toast
+}) {
+  const [mandant, setMandant] = useState('');
+  const [user, setUser] = useState('');
+  const [pw, setPw] = useState('');
+  const [loading, setLoading] = useState(false);
+  async function handleLogin() {
+    if (!mandant || !user || !pw) return;
+    setLoading(true);
+    await connect(mandant, user, pw);
+    setLoading(false);
+    toast('PCM Verbindung hergestellt – Preislisten synchronisiert', 'success');
+  }
+  async function handleSync() {
+    await sync();
+    toast('PCM Preislisten aktualisiert', 'success');
+  }
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("style", null, pcmCss), /*#__PURE__*/React.createElement("div", {
+    className: "pcm-login-wrap"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pcm-logo-bar"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pcm-logo-icon"
+  }, "\uD83D\uDD17"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "pcm-logo-text"
+  }, "PCM Procareline"), /*#__PURE__*/React.createElement("div", {
+    className: "pcm-logo-sub"
+  }, "eCare Einkaufsportal \u2013 Schnittstelle"))), pcmState?.connected ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "pcm-status connected"
+  }, "\u2705 Verbunden mit PCM \xB7 Mandant: ", pcmState.mandant, " \xB7 Benutzer: ", pcmState.user), lastSync && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: '#6B7280',
+      fontWeight: 600,
+      marginBottom: 14
+    }
+  }, "Letzte Synchronisation: ", lastSync.toLocaleTimeString('de-DE')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      marginBottom: 20
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    style: {
+      flex: 2
+    },
+    onClick: handleSync,
+    disabled: syncing
+  }, syncing ? /*#__PURE__*/React.createElement("span", {
+    className: "spin"
+  }, "\u27F3") : '⟳', " Preise synchronisieren"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    style: {
+      flex: 1
+    },
+    onClick: () => {
+      disconnect();
+      toast('PCM getrennt', 'warn');
+    }
+  }, "Trennen")), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDCCA Synchronisations-\xDCbersicht")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: 16,
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#F0FDF4',
+      borderRadius: 12,
+      padding: 14,
+      border: '1.5px solid #BBF7D0',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: 900,
+      color: '#16A34A',
+      fontFamily: 'JetBrains Mono'
+    }
+  }, PCM_KATALOG.length), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      color: '#6B7280',
+      textTransform: 'uppercase',
+      marginTop: 4
+    }
+  }, "Preispositionen")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#EFF6FF',
+      borderRadius: 12,
+      padding: 14,
+      border: '1.5px solid #BFDBFE',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: 900,
+      color: '#2563EB',
+      fontFamily: 'JetBrains Mono'
+    }
+  }, [...new Set(PCM_KATALOG.map(k => k.artikelId))].length), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      color: '#6B7280',
+      textTransform: 'uppercase',
+      marginTop: 4
+    }
+  }, "Artikel abgedeckt")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#FFFBEB',
+      borderRadius: 12,
+      padding: 14,
+      border: '1.5px solid #FDE68A',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: 900,
+      color: '#D97706',
+      fontFamily: 'JetBrains Mono'
+    }
+  }, [...new Set(PCM_KATALOG.map(k => k.lieferantId))].length), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      color: '#6B7280',
+      textTransform: 'uppercase',
+      marginTop: 4
+    }
+  }, "Lieferanten")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: '#F4F6F9',
+      borderRadius: 12,
+      padding: 14,
+      border: '1.5px solid #E2E8F0',
+      textAlign: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 24,
+      fontWeight: 900,
+      color: '#0F172A',
+      fontFamily: 'JetBrains Mono'
+    }
+  }, PCM_KATALOG.reduce((s, k) => s + k.gebinde.length, 0)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      color: '#6B7280',
+      textTransform: 'uppercase',
+      marginTop: 4
+    }
+  }, "Gebinde-Optionen"))))) : /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 20
+    }
+  }, syncing ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center',
+      padding: '32px 0'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "spin",
+    style: {
+      fontSize: 36,
+      display: 'block',
+      marginBottom: 16
+    }
+  }, "\u27F3"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 16,
+      color: '#2563EB'
+    }
+  }, "Verbindung wird hergestellt\u2026"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: '#6B7280',
+      marginTop: 6
+    }
+  }, "Preislisten werden synchronisiert")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "pcm-status disconnected"
+  }, "\u26A0 Nicht verbunden \u2013 PCM-Zugangsdaten eingeben"), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Mandant"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "z.B. 10042",
+    value: mandant,
+    onChange: e => setMandant(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Benutzername"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "PCM-Benutzername",
+    value: user,
+    onChange: e => setUser(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Passwort"), /*#__PURE__*/React.createElement("input", {
+    type: "password",
+    placeholder: "\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022",
+    value: pw,
+    onChange: e => setPw(e.target.value)
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary btn-xl",
+    onClick: handleLogin,
+    disabled: !mandant || !user || !pw
+  }, "Mit PCM verbinden"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: '#94A3B8',
+      textAlign: 'center',
+      fontWeight: 600
+    }
+  }, "Verbindet mit procareline.com/eCare \xB7 Daten werden lokal gespeichert")))));
+}
+
+// ── PREISVERGLEICH & AMPEL ────────────────────────────────────────────────────
+function Preisvergleich({
+  data,
+  setData,
+  pcmState,
+  toast
+}) {
+  const {
+    artikel,
+    lager
+  } = data;
+  const [warenkorb, setWarenkorb] = useState([]);
+  const [showWK, setShowWK] = useState(false);
+  const [selectedGebinde, setSelectedGebinde] = useState({}); // key: `${aId}-${lId}-${gIdx}`
+  const [filterAmpel, setFilterAmpel] = useState('alle');
+  const [search, setSearch] = useState('');
+
+  // Artikel die im PCM-Katalog vorhanden sind
+  const katalogArtikel = [...new Set(PCM_KATALOG.map(k => k.artikelId))].map(aId => getA(artikel, aId)).filter(Boolean).filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()));
+  function addToWarenkorb(artikelId, lieferantId, gebinde) {
+    const art = getA(artikel, artikelId);
+    const lief = PCM_KATALOG.find(k => k.artikelId === artikelId && k.lieferantId === lieferantId);
+    const key = `${artikelId}-${lieferantId}-${gebinde.label}`;
+    setWarenkorb(wk => {
+      const ex = wk.findIndex(w => w.key === key);
+      if (ex >= 0) {
+        return wk.map((w, i) => i === ex ? {
+          ...w,
+          anzahl: w.anzahl + 1
+        } : w);
+      }
+      return [...wk, {
+        key,
+        artikelId,
+        lieferantId,
+        artikelName: art.name,
+        lieferantName: lief.lieferantName,
+        gebinde,
+        anzahl: 1
+      }];
+    });
+    toast(`${art.name} – ${gebinde.label} in Warenkorb`, 'success');
+  }
+  function removeFromWK(key) {
+    setWarenkorb(wk => wk.filter(w => w.key !== key));
+  }
+  function bestellungAbschicken() {
+    if (!warenkorb.length) return;
+    // Gruppiere nach Lieferant → Bestellungen anlegen
+    const byLief = {};
+    warenkorb.forEach(w => {
+      if (!byLief[w.lieferantId]) byLief[w.lieferantId] = [];
+      byLief[w.lieferantId].push({
+        artikelId: w.artikelId,
+        menge: w.gebinde.menge * w.anzahl,
+        ek: w.gebinde.ek / w.gebinde.menge
+      });
+    });
+    const newBest = Object.entries(byLief).map(([lid, pos]) => ({
+      id: Date.now() + Math.random(),
+      lieferantId: Number(lid),
+      datum: todayStr(),
+      status: 'Offen',
+      belegnr: `PCM-${Date.now().toString().slice(-5)}`,
+      positionen: pos
+    }));
+    setData(d => ({
+      ...d,
+      bestellungen: [...newBest, ...d.bestellungen]
+    }));
+    setWarenkorb([]);
+    setShowWK(false);
+    toast(`${newBest.length} PCM-Bestellung(en) angelegt`, 'success');
+  }
+  const wkGesamt = warenkorb.reduce((s, w) => s + w.gebinde.ek * w.anzahl, 0);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("style", null, pcmCss), !pcmState?.connected && /*#__PURE__*/React.createElement("div", {
+    className: "alert warn"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\u26A0"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, "PCM nicht verbunden \u2013 Preise sind Demo-Daten. Verbinde PCM f\xFCr Live-Preise.")), /*#__PURE__*/React.createElement("div", {
+    className: "legend"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "legend-item"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ampel-dot green"
+  }), " G\xFCnstigster Preis \u2013 bevorzugt bestellen"), /*#__PURE__*/React.createElement("div", {
+    className: "legend-item"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ampel-dot yellow"
+  }), " Mittlerer Preis \u2013 bestellbar"), /*#__PURE__*/React.createElement("div", {
+    className: "legend-item"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ampel-dot red"
+  }), " Teuerster Preis \u2013 gesperrt")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      marginBottom: 16,
+      flexWrap: 'wrap'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "search-wrap",
+    style: {
+      flex: 1,
+      minWidth: 180
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "search-icon"
+  }, "\uD83D\uDD0D"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Artikel suchen\u2026",
+    value: search,
+    onChange: e => setSearch(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "tabs",
+    style: {
+      margin: 0
+    }
+  }, [['alle', 'Alle'], ['green', '🟢 Grün'], ['yellow', '🟡 Gelb'], ['red', '🔴 Rot']].map(([v, l]) => /*#__PURE__*/React.createElement("button", {
+    key: v,
+    className: `tab-btn${filterAmpel === v ? ' active' : ''}`,
+    onClick: () => setFilterAmpel(v)
+  }, l)))), katalogArtikel.map(art => {
+    const ampelMap = getAmpel(art.id);
+    const anbieter = PCM_KATALOG.filter(k => k.artikelId === art.id);
+    // Filter by Ampel
+    const filteredAnbieter = filterAmpel === 'alle' ? anbieter : anbieter.filter(a => ampelMap[a.lieferantId] === filterAmpel);
+    if (filteredAnbieter.length === 0) return null;
+    const bestand = getLB(lager, art.id);
+    return /*#__PURE__*/React.createElement("div", {
+      key: art.id,
+      className: "pv-card"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pv-header"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pv-artikel"
+    }, art.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 12,
+        marginTop: 4,
+        flexWrap: 'wrap'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "pv-sub"
+    }, "Einheit: ", art.einheit, " \xB7 Bestand: ", bestand.toFixed(1), " \xB7 Mindest: ", art.mindestbestand), bestand < art.mindestbestand && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        fontWeight: 800,
+        color: '#DC2626',
+        background: '#FEE2E2',
+        padding: '2px 8px',
+        borderRadius: 20
+      }
+    }, "\u26A0 Unterbestand")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 8,
+        marginTop: 8,
+        flexWrap: 'wrap'
+      }
+    }, anbieter.map(a => /*#__PURE__*/React.createElement("div", {
+      key: a.lieferantId,
+      className: "ampel-wrap"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: `ampel-dot ${ampelMap[a.lieferantId] || 'gray'}`
+    }), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 700,
+        color: '#475569'
+      }
+    }, a.lieferantName))))), filteredAnbieter.map(anbieterEntry => {
+      const status = ampelMap[anbieterEntry.lieferantId] || 'gray';
+      const isLocked = status === 'red';
+      const rowClass = `pv-lief-row ${status}-row`;
+      return /*#__PURE__*/React.createElement("div", {
+        key: anbieterEntry.lieferantId,
+        className: rowClass
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "pv-lief-info"
+      }, /*#__PURE__*/React.createElement("div", {
+        className: "pv-lief-name"
+      }, /*#__PURE__*/React.createElement(AmpelTurm, {
+        status: status
+      }), anbieterEntry.lieferantName, anbieterEntry.pcmArtNr && /*#__PURE__*/React.createElement("span", {
+        className: "pv-artnr"
+      }, "Art-Nr: ", anbieterEntry.pcmArtNr), status === 'green' && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 10,
+          background: '#DCFCE7',
+          color: '#16A34A',
+          padding: '2px 8px',
+          borderRadius: 20,
+          fontWeight: 800
+        }
+      }, "BEVORZUGT"), isLocked && /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 10,
+          background: '#FEE2E2',
+          color: '#DC2626',
+          padding: '2px 8px',
+          borderRadius: 20,
+          fontWeight: 800
+        }
+      }, "\uD83D\uDD12 GESPERRT")), /*#__PURE__*/React.createElement("div", {
+        className: "pv-gebinde-list"
+      }, anbieterEntry.gebinde.map((g, gIdx) => {
+        const key = `${art.id}-${anbieterEntry.lieferantId}-${gIdx}`;
+        const stueckpreis = g.ek / g.menge;
+        const isSelected = selectedGebinde[key];
+        return /*#__PURE__*/React.createElement("div", {
+          key: gIdx,
+          className: `pv-gebinde-item${isSelected ? ' selected' : ''}${isLocked ? ' disabled' : ''}`,
+          onClick: () => {
+            if (isLocked) return;
+            setSelectedGebinde(s => ({
+              ...s,
+              [key]: !s[key]
+            }));
+          }
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 16
+          }
+        }, isLocked ? '🔒' : isSelected ? '✅' : '☐'), /*#__PURE__*/React.createElement("div", {
+          className: "pv-gebinde-label"
+        }, g.label), /*#__PURE__*/React.createElement("div", {
+          style: {
+            textAlign: 'right'
+          }
+        }, /*#__PURE__*/React.createElement("div", {
+          className: "pv-gebinde-ek"
+        }, g.ek.toFixed(2).replace('.', ','), " \u20AC"), /*#__PURE__*/React.createElement("div", {
+          className: "pv-gebinde-pro"
+        }, stueckpreis.toFixed(2).replace('.', ','), " \u20AC/", g.einheit)), !isLocked && /*#__PURE__*/React.createElement("button", {
+          className: "btn btn-primary btn-sm",
+          style: {
+            flexShrink: 0,
+            minHeight: 32,
+            padding: '0 10px',
+            fontSize: 12
+          },
+          onClick: e => {
+            e.stopPropagation();
+            addToWarenkorb(art.id, anbieterEntry.lieferantId, g);
+          }
+        }, "+ Bestellen"));
+      }))), /*#__PURE__*/React.createElement("div", {
+        className: "pv-ampel-col"
+      }, /*#__PURE__*/React.createElement(AmpelTurm, {
+        status: status
+      }), isLocked && /*#__PURE__*/React.createElement("div", {
+        className: "pv-locked"
+      }, /*#__PURE__*/React.createElement("span", null, "\uD83D\uDD12"), /*#__PURE__*/React.createElement("span", null, "Gesperrt")), status === 'green' && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 9,
+          fontWeight: 800,
+          color: '#16A34A',
+          textAlign: 'center'
+        }
+      }, "BEST", /*#__PURE__*/React.createElement("br", null), "PREIS"), status === 'yellow' && /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 9,
+          fontWeight: 800,
+          color: '#D97706',
+          textAlign: 'center'
+        }
+      }, "OK")));
+    }));
+  }), warenkorb.length > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "wk-fab",
+    onClick: () => setShowWK(true)
+  }, "\uD83D\uDED2", /*#__PURE__*/React.createElement("span", {
+    className: "wk-count"
+  }, warenkorb.length)), showWK && /*#__PURE__*/React.createElement(Modal, {
+    title: `🛒 Warenkorb (${warenkorb.length} Pos.)`,
+    onClose: () => setShowWK(false),
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '0 0 10px',
+        fontWeight: 800,
+        fontSize: 15
+      }
+    }, /*#__PURE__*/React.createElement("span", null, "Gesamt:"), /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: '#2563EB',
+        fontFamily: 'JetBrains Mono'
+      }
+    }, wkGesamt.toFixed(2).replace('.', ','), " \u20AC")), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-primary btn-xl",
+      onClick: bestellungAbschicken
+    }, "\uD83D\uDCCB Bestellung", Object.keys(warenkorb.reduce((s, w) => {
+      s[w.lieferantId] = 1;
+      return s;
+    }, {})).length > 1 ? 'en' : '', " anlegen"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost",
+      style: {
+        width: '100%'
+      },
+      onClick: () => setShowWK(false)
+    }, "Schlie\xDFen"))
+  }, warenkorb.map(w => /*#__PURE__*/React.createElement("div", {
+    key: w.key,
+    className: "wk-row"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "wk-name"
+  }, w.artikelName), /*#__PURE__*/React.createElement("div", {
+    className: "wk-detail"
+  }, w.lieferantName, " \xB7 ", w.gebinde.label, " \xD7 ", w.anzahl)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontFamily: 'JetBrains Mono',
+      fontWeight: 700,
+      color: '#2563EB',
+      fontSize: 14,
+      marginRight: 10
+    }
+  }, (w.gebinde.ek * w.anzahl).toFixed(2).replace('.', ','), " \u20AC"), /*#__PURE__*/React.createElement("button", {
+    className: "pos-remove",
+    onClick: () => removeFromWK(w.key)
+  }, "\u2715")))));
+}
+
+// ── PCM WRAPPER (kombiniert Login + Preisvergleich) ───────────────────────────
+function PCMModule({
+  data,
+  setData,
+  toast
+}) {
+  const pcm = usePCM();
+  const [tab, setTab] = useState('preise');
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tabs"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: `tab-btn${tab === 'preise' ? ' active' : ''}`,
+    onClick: () => setTab('preise')
+  }, "\uD83D\uDCB9 Preisvergleich & Ampel"), /*#__PURE__*/React.createElement("button", {
+    className: `tab-btn${tab === 'verbindung' ? ' active' : ''}`,
+    onClick: () => setTab('verbindung')
+  }, "\uD83D\uDD17 PCM-Verbindung ", pcm.pcmState?.connected ? '🟢' : '🔴')), tab === 'verbindung' && /*#__PURE__*/React.createElement(PCMLogin, _extends({}, pcm, {
+    toast: toast
+  })), tab === 'preise' && /*#__PURE__*/React.createElement(Preisvergleich, {
+    data: data,
+    setData: setData,
+    pcmState: pcm.pcmState,
+    toast: toast
+  }));
+}
