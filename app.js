@@ -31,18 +31,20 @@ const C = {
 // ─── CSS ──────────────────────────────────────────────────────────────────────
 const css = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  html, body, #root { height: 100%; background: ${C.bg}; }
-  body { font-family: 'Nunito', sans-serif; color: ${C.text}; font-size: 15px; -webkit-tap-highlight-color: transparent; }
+  html, body { min-height: 100%; background: ${C.bg}; }
+  #root { min-height: 100vh; }
+  body { font-family: 'Nunito', sans-serif; color: ${C.text}; font-size: clamp(13px, 1.5vw, 16px); -webkit-tap-highlight-color: transparent; }
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: ${C.bg}; }
   ::-webkit-scrollbar-thumb { background: ${C.borderMid}; border-radius: 3px; }
 
-  .app { display: flex; flex-direction: column; height: 100%; overflow: hidden; }
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+  .app-inner { max-width: 1200px; margin: 0 auto; width: 100%; }
 
   /* TOP BAR */
   .topbar { background: ${C.blue}; color: white; padding: 0 20px; height: 60px;
     display: flex; align-items: center; gap: 14px; flex-shrink: 0;
-    box-shadow: 0 2px 12px #2563EB33; position: relative; z-index: 10; }
+    box-shadow: 0 2px 12px #2563EB33; position: sticky; top: 0; z-index: 50; }
   .topbar-logo { font-size: 19px; font-weight: 900; letter-spacing: -0.3px; flex: 1; }
   .topbar-logo .sub { font-size: 13px; font-weight: 600; opacity: 0.75; margin-left: 4px; }
   .topbar-badges { display: flex; gap: 8px; }
@@ -54,7 +56,7 @@ const css = `
 
   /* PAGE BREADCRUMB */
   .page-bar { background: ${C.bgBlue}; border-bottom: 1.5px solid ${C.border};
-    padding: 10px 16px; flex-shrink: 0; }
+    padding: 10px 16px; flex-shrink: 0; position: sticky; top: 60px; z-index: 40; }
   .page-bar-inner { font-size: 13px; font-weight: 800; color: ${C.blue}; }
 
   /* BOTTOM NAV */
@@ -75,8 +77,8 @@ const css = `
     padding: 0 3px; border: 2px solid white; }
 
   /* CONTENT */
-  .content { flex: 1; overflow-y: auto; padding: 16px;
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  .content { flex: 1; padding: 16px;
+    padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
 
   /* SECTION HEADER */
   .sec-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; gap: 10px; }
@@ -110,7 +112,8 @@ const css = `
   .alert-text { flex: 1; line-height: 1.35; }
 
   /* CARDS */
-  .card { background: white; border-radius: 16px; border: 1.5px solid ${C.border}; overflow: hidden; margin-bottom: 14px; }
+  .card { background: white; border-radius: 16px; border: 1.5px solid ${C.border}; overflow-x: auto; overflow-y: hidden; margin-bottom: 14px; -webkit-overflow-scrolling: touch; }
+  .card-inner { overflow: hidden; border-radius: 16px; }
   .card-head { display: flex; align-items: center; justify-content: space-between;
     padding: 14px 16px; border-bottom: 1.5px solid ${C.border}; background: ${C.bg}; }
   .card-title { font-size: 15px; font-weight: 800; color: ${C.text}; }
@@ -131,7 +134,8 @@ const css = `
   .tile-sub { font-size: 12px; font-weight: 600; color: ${C.textMid}; }
 
   /* TABLE */
-  .tbl { width: 100%; border-collapse: collapse; }
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .tbl { width: 100%; border-collapse: collapse; min-width: 480px; }
   .tbl th { text-align: left; padding: 10px 14px; font-size: 11px; text-transform: uppercase;
     letter-spacing: 0.8px; color: ${C.textMid}; font-weight: 800; background: ${C.bg};
     border-bottom: 1.5px solid ${C.border}; }
@@ -285,9 +289,22 @@ const css = `
   @media (min-width: 640px) {
     .kpi-grid { grid-template-columns: repeat(4, 1fr); }
     .action-grid { grid-template-columns: repeat(4, 1fr); }
-    .content { padding: 20px 24px; padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+    .content { padding: 20px 24px; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
     .modal { border-radius: 24px; margin: auto; margin-bottom: 20px; }
     .modal-overlay { align-items: center; }
+  }
+  @media (min-width: 900px) {
+    .kpi-grid { grid-template-columns: repeat(4, 1fr); }
+    .action-grid { grid-template-columns: repeat(4, 1fr); }
+    .rez-grid { grid-template-columns: repeat(3, 1fr); }
+    .content { padding: 24px 32px; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+    .tbl th, .tbl td { padding: 14px 18px; font-size: 14px; }
+  }
+  @media (min-width: 1200px) {
+    .content { padding: 28px 40px; padding-bottom: calc(80px + env(safe-area-inset-bottom, 0px)); }
+    body { font-size: 15px; }
+    .kpi-val { font-size: 28px; }
+    .card { border-radius: 20px; }
   }
 `;
 
@@ -787,7 +804,7 @@ function Wareneingang({ data, setData, toast }) {
           {wareneingaenge.length === 0
             ? <div className="empty"><div className="empty-icon">🚚</div><div className="empty-title">Noch keine Eingänge</div></div>
             : (
-              <table className="tbl">
+              <div className="tbl-wrap"><table className="tbl">
                 <thead><tr><th>Beleg-Nr.</th><th>Datum</th><th>Lieferant</th><th>Pos.</th><th>Wert</th><th>Status</th></tr></thead>
                 <tbody>
                   {wareneingaenge.map(we => {
