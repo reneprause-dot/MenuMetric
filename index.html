@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/>
+  <meta name="theme-color" content="#2563EB"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="GastroWawi"/>
+  <meta name="description" content="Warenwirtschaftssystem für Großküchen"/>
+  <link rel="manifest" href="manifest.json"/>
+  <link rel="apple-touch-icon" href="icons/icon-192.png"/>
+  <link rel="icon" href="icons/icon-192.png"/>
+  <title>GastroWawi – Großküche</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html, body { height: 100%; background: #F4F6F9; font-family: 'Nunito', sans-serif; }
+    #root { height: 100%; }
+
+    /* ── INSTALL BANNER ── */
+    #install-banner {
+      display: none; position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      background: #1E40AF; color: white; border-radius: 16px; padding: 14px 20px;
+      display: flex; align-items: center; gap: 14px; z-index: 9999;
+      box-shadow: 0 8px 32px #1E40AF44; max-width: calc(100vw - 32px);
+      animation: slideUp 0.4s ease;
+    }
+    #install-banner.hidden { display: none !important; }
+    @keyframes slideUp { from { opacity:0; transform: translateX(-50%) translateY(20px); } to { opacity:1; transform: translateX(-50%) translateY(0); } }
+    #install-banner .ib-text { font-size: 14px; font-weight: 700; line-height: 1.3; }
+    #install-banner .ib-sub { font-size: 12px; opacity: 0.8; font-weight: 600; }
+    #install-btn { background: white; color: #1E40AF; border: none; border-radius: 10px;
+      padding: 10px 18px; font-size: 14px; font-weight: 800; cursor: pointer;
+      font-family: 'Nunito', sans-serif; white-space: nowrap; flex-shrink: 0; }
+    #dismiss-btn { background: none; border: none; color: white; cursor: pointer; font-size: 20px; opacity: 0.7; flex-shrink: 0; }
+
+    /* ── LOADING ── */
+    #loading { position: fixed; inset: 0; background: #EFF6FF; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px; z-index: 10000; }
+    #loading .logo { font-family: 'Nunito', sans-serif; font-size: 32px; font-weight: 900; color: #2563EB; }
+    #loading .sub { font-size: 14px; color: #6B7280; font-weight: 600; }
+    .spinner { width: 40px; height: 40px; border: 4px solid #DBEAFE; border-top-color: #2563EB;
+      border-radius: 50%; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    #loading.done { opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+
+    /* ── OFFLINE TOAST ── */
+    #offline-toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+      background: #7C3AED; color: white; padding: 10px 18px; border-radius: 12px;
+      font-size: 13px; font-weight: 700; z-index: 9999; display: none; }
+    #offline-toast.show { display: block; }
+  </style>
+</head>
+<body>
+  <div id="loading">
+    <div class="logo">👨‍🍳 GastroWawi</div>
+    <div class="sub">Großküchen-Warenwirtschaft</div>
+    <div class="spinner"></div>
+  </div>
+
+  <div id="offline-toast">📡 Offline – App läuft im lokalen Modus</div>
+
+  <div id="install-banner" class="hidden">
+    <div>
+      <div class="ib-text">📱 Als App installieren</div>
+      <div class="ib-sub">Direkt auf dem Tablet verfügbar</div>
+    </div>
+    <button id="install-btn">Installieren</button>
+    <button id="dismiss-btn">✕</button>
+  </div>
+
+  <div id="root"></div>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="app.js" type="text/babel" data-presets="react"></script>
+
+  <script>
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(()=>{});
+      });
+    }
+
+    // PWA Install Prompt
+    let deferredPrompt;
+    const banner = document.getElementById('install-banner');
+    const installBtn = document.getElementById('install-btn');
+    const dismissBtn = document.getElementById('dismiss-btn');
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      banner.classList.remove('hidden');
+    });
+
+    installBtn.addEventListener('click', async () => {
+      banner.classList.add('hidden');
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        const { outcome } = await deferredPrompt.userChoice;
+        deferredPrompt = null;
+      }
+    });
+
+    dismissBtn.addEventListener('click', () => banner.classList.add('hidden'));
+
+    // Offline detection
+    const toast = document.getElementById('offline-toast');
+    window.addEventListener('offline', () => toast.classList.add('show'));
+    window.addEventListener('online', () => toast.classList.remove('show'));
+
+    // Loading screen
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const l = document.getElementById('loading');
+        l.classList.add('done');
+        setTimeout(() => l.remove(), 350);
+      }, 600);
+    });
+  </script>
+</body>
+</html>
