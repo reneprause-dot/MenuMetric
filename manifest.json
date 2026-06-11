@@ -1,6 +1,6 @@
 {
-  "name": "GastroWawi – Großküche",
-  "short_name": "GastroWawi",
+  "name": "MenuMetric – Großküche",
+  "short_name": "MenuMetric",
   "description": "Warenwirtschaftssystem für Großküchen",
   "start_url": "/",
   "display": "standalone",

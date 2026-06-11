@@ -1,4 +1,4 @@
-const CACHE = 'gastrowawi-v1';
+const CACHE = 'menumetric-v1';
 const ASSETS = [
   '/',
   '/index.html',
