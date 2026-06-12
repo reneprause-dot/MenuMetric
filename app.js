@@ -1939,42 +1939,95 @@ function Wareneingang({
     }
   }, form.positionen.map((p, i) => /*#__PURE__*/React.createElement("div", {
     key: p.id,
-    className: "pos-item"
-  }, /*#__PURE__*/React.createElement("div", {
     style: {
-      flex: 1
+      background: C.bg,
+      borderRadius: 12,
+      padding: '10px 12px',
+      border: !p.mhd ? `1.5px solid ${C.red}` : `1.5px solid ${C.border}`,
+      marginBottom: 6
     }
   }, /*#__PURE__*/React.createElement("div", {
-    className: "pos-item-name"
-  }, p.artName, !p.mhd && /*#__PURE__*/React.createElement("span", {
     style: {
-      color: C.red,
-      fontSize: 11,
-      marginLeft: 6
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8
     }
-  }, "\u26A0 MHD fehlt")), /*#__PURE__*/React.createElement("div", {
-    className: "pos-item-detail"
-  }, fmt(p.menge, 2), " ", p.artEinheit, " \xB7 ", p.ek ? fmtE(Number(p.ek)) + '/Stk' : '—', " \xB7 MHD: ", p.mhd || '—', p.pcmArtNr && ` · PCM: ${p.pcmArtNr}`, p.gebindeLabel && ` · ${p.gebindeLabel}`)), !p.mhd && /*#__PURE__*/React.createElement("input", {
-    type: "date",
+  }, /*#__PURE__*/React.createElement("div", {
     style: {
-      width: 140,
-      minHeight: 36,
-      fontSize: 12
-    },
-    onChange: e => setForm(f => ({
-      ...f,
-      positionen: f.positionen.map((x, j) => j === i ? {
-        ...x,
-        mhd: e.target.value
-      } : x)
-    }))
-  }), /*#__PURE__*/React.createElement("button", {
+      fontWeight: 800,
+      fontSize: 14
+    }
+  }, p.artName), /*#__PURE__*/React.createElement("button", {
     className: "pos-remove",
     onClick: () => setForm(f => ({
       ...f,
       positionen: f.positionen.filter((_, j) => j !== i)
     }))
-  }, "\u2715")))), /*#__PURE__*/React.createElement("div", {
+  }, "\u2715")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.textMid,
+      marginBottom: 8
+    }
+  }, fmt(p.menge, 2), " ", p.artEinheit, p.gebindeLabel && /*#__PURE__*/React.createElement("span", null, " \xB7 ", p.gebindeLabel), p.pcmArtNr && /*#__PURE__*/React.createElement("span", null, " \xB7 PCM: ", p.pcmArtNr)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'grid',
+      gridTemplateColumns: '1fr 1fr',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: !p.mhd ? C.red : C.textMid,
+      textTransform: 'uppercase',
+      marginBottom: 3
+    }
+  }, "MHD ", !p.mhd && '⚠ Pflicht'), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: p.mhd || '',
+    style: {
+      minHeight: 40,
+      fontSize: 13,
+      borderColor: !p.mhd ? C.red : C.border
+    },
+    onChange: e => {
+      const val = e.target.value;
+      setForm(f => ({
+        ...f,
+        positionen: f.positionen.map((x, j) => j === i ? {
+          ...x,
+          mhd: val
+        } : x)
+      }));
+    }
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: C.textMid,
+      textTransform: 'uppercase',
+      marginBottom: 3
+    }
+  }, "EK-Preis (\u20AC)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    step: "0.01",
+    value: p.ek || '',
+    placeholder: "0,00",
+    style: {
+      minHeight: 40,
+      fontSize: 13
+    },
+    onChange: e => setForm(f => ({
+      ...f,
+      positionen: f.positionen.map((x, j) => j === i ? {
+        ...x,
+        ek: e.target.value
+      } : x)
+    }))
+  })))))), /*#__PURE__*/React.createElement("div", {
     className: "card",
     style: {
       padding: 16
@@ -4294,7 +4347,7 @@ const PAGES = [{
 }, {
   id: 'stammdaten',
   label: 'Stammdaten',
-  icon: '⚙️'
+  icon: '🗂'
 }, {
   id: 'pcm',
   label: 'PCM',
