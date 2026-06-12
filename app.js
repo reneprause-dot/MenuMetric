@@ -219,6 +219,17 @@ const css = `
     .content{padding:28px 40px;padding-bottom:calc(80px + env(safe-area-inset-bottom,0px));}
     .kpi-val{font-size:28px;}
   }
+  /* Artikel-Status */
+  .status-frei{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;background:#DCFCE7;color:#16A34A;border:1px solid #BBF7D0;}
+  .status-gesperrt{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;}
+  .status-quarantaene{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:800;background:#FEF3C7;color:#D97706;border:1px solid #FDE68A;}
+  /* Max-Portionen Badge */
+  .max-port{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:20px;font-size:12px;font-weight:900;background:#EFF6FF;color:#2563EB;border:1.5px solid #BFDBFE;}
+  .max-port.warn{background:#FEF3C7;color:#D97706;border-color:#FDE68A;}
+  .max-port.none{background:#FEE2E2;color:#DC2626;border-color:#FECACA;}
+  /* Ausbuchen-Log */
+  .log-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;}
+  .log-row:last-child{border-bottom:none;}
 `;
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const INIT = {
@@ -487,7 +498,8 @@ const INIT = {
   archivWE: [],
   archivBest: [],
   tagesabschluesse: [],
-  stornoProtokoll: []
+  stornoProtokoll: [],
+  ausbuchungsLog: []
 };
 
 // ── PCM KATALOG ───────────────────────────────────────────────────────────────
@@ -831,6 +843,21 @@ function getBestEkFromPCM(artikelId) {
     if (sp < best) best = sp;
   }));
   return best === Infinity ? null : best;
+}
+
+// Freier Lagerbestand: nur 'frei' und MHD nicht abgelaufen (taggenau = 0 Tage noch ok)
+function getLBFrei(lager, aId) {
+  return lager.filter(l => l.artikelId === aId && (l.artikelStatus || 'frei') === 'frei' && daysDiff(l.mhd) >= 0).reduce((s, l) => s + l.menge, 0);
+}
+
+// Max produzierbare Portionen einer Rezeptur mit freiem Bestand
+function getMaxPortionen(rez, lager) {
+  if (!rez.zutaten.length) return 0;
+  const moeglich = rez.zutaten.map(z => {
+    const b = getLBFrei(lager, z.artikelId);
+    return z.menge > 0 ? Math.floor(b / z.menge) : Infinity;
+  });
+  return Math.min(...moeglich);
 }
 function getRezKosten(rez, artikel, lager) {
   return rez.zutaten.reduce((s, z) => {
@@ -1263,6 +1290,17 @@ function Dashboard({
 }
 
 // ── LAGER ─────────────────────────────────────────────────────────────────────
+function statusBadge(s) {
+  if (s === 'gesperrt') return /*#__PURE__*/React.createElement("span", {
+    className: "status-gesperrt"
+  }, "\uD83D\uDD12 Gesperrt");
+  if (s === 'quarantaene') return /*#__PURE__*/React.createElement("span", {
+    className: "status-quarantaene"
+  }, "\u26A0 Quarant\xE4ne");
+  return /*#__PURE__*/React.createElement("span", {
+    className: "status-frei"
+  }, "\u2713 Frei");
+}
 function Lager({
   data,
   setData,
@@ -1270,20 +1308,29 @@ function Lager({
 }) {
   const {
     artikel,
-    lager
+    lager,
+    ausbuchungsLog = []
   } = data;
   const [search, setSearch] = useState('');
   const [kat, setKat] = useState('Alle');
+  const [statusFilter, setStatusFilter] = useState('Alle');
   const [abgangModal, setAbgangModal] = useState(null);
   const [abgangMenge, setAbgangMenge] = useState(1);
+  const [ausbuchModal, setAusbuchModal] = useState(null); // Charge für Ausbuchen
+  const [ausbuchGrund, setAusbuchGrund] = useState('');
+  const [showLog, setShowLog] = useState(false);
   const kategorien = [...new Set(artikel.map(a => a.kategorie))].sort();
   const rows = artikel.map(a => ({
     ...a,
     bestand: getLB(lager, a.id),
+    bestandFrei: getLBFrei(lager, a.id),
     positionen: lager.filter(l => l.artikelId === a.id).sort((x, y) => new Date(x.mhd) - new Date(y.mhd))
   })).filter(a => {
     const q = search.toLowerCase();
-    return (!q || a.name.toLowerCase().includes(q) || a.kategorie.toLowerCase().includes(q)) && (kat === 'Alle' || a.kategorie === kat);
+    const matchSearch = !q || a.name.toLowerCase().includes(q) || a.kategorie.toLowerCase().includes(q);
+    const matchKat = kat === 'Alle' || a.kategorie === kat;
+    const matchStatus = statusFilter === 'Alle' || (a.artikelStatus || 'frei') === statusFilter;
+    return matchSearch && matchKat && matchStatus;
   });
   function buchAbgang() {
     if (!abgangModal) return;
@@ -1309,6 +1356,51 @@ function Lager({
     toast(`${fmt(menge, 2)} ${art.einheit} ${art.name} entnommen`, 'success');
     setAbgangModal(null);
   }
+
+  // Charge ausbuchen: vollständig aus Lager entfernen + Log-Eintrag
+  function ausbuchen() {
+    if (!ausbuchModal || !ausbuchGrund.trim()) return;
+    const {
+      ch,
+      art
+    } = ausbuchModal;
+    const logEntry = {
+      id: Date.now() + Math.random(),
+      datum: todayStr(),
+      uhrzeit: new Date().toLocaleTimeString('de-DE'),
+      artikelId: art.id,
+      artikelName: art.name,
+      einheit: art.einheit,
+      charge: ch.charge,
+      lagerort: ch.lagerort,
+      mhd: ch.mhd,
+      menge: ch.menge,
+      ekProStueck: ch.ek,
+      wertGesamt: ch.menge * ch.ek,
+      grund: ausbuchGrund.trim(),
+      mhdAbgelaufen: daysDiff(ch.mhd) < 0
+    };
+    setData(d => ({
+      ...d,
+      lager: d.lager.filter(l => l.id !== ch.id),
+      ausbuchungsLog: [logEntry, ...(d.ausbuchungsLog || [])]
+    }));
+    toast(`${art.name} Charge ${ch.charge} ausgebucht (${fmtE(logEntry.wertGesamt)})`, 'warn');
+    setAusbuchModal(null);
+    setAusbuchGrund('');
+  }
+
+  // Artikel-Status ändern
+  function setArtikelStatus(artikelId, status) {
+    setData(d => ({
+      ...d,
+      artikel: d.artikel.map(a => a.id === artikelId ? {
+        ...a,
+        artikelStatus: status
+      } : a)
+    }));
+    toast('Status geändert: ' + status, 'info');
+  }
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
@@ -1319,7 +1411,7 @@ function Lager({
   }, /*#__PURE__*/React.createElement("div", {
     className: "search-wrap",
     style: {
-      minWidth: 200,
+      minWidth: 180,
       flex: 1
     }
   }, /*#__PURE__*/React.createElement("span", {
@@ -1332,18 +1424,36 @@ function Lager({
     value: kat,
     onChange: e => setKat(e.target.value),
     style: {
-      width: 150,
+      width: 140,
       flex: 'none'
     }
   }, /*#__PURE__*/React.createElement("option", null, "Alle"), kategorien.map(k => /*#__PURE__*/React.createElement("option", {
     key: k
-  }, k)))), /*#__PURE__*/React.createElement("div", {
+  }, k))), /*#__PURE__*/React.createElement("select", {
+    value: statusFilter,
+    onChange: e => setStatusFilter(e.target.value),
+    style: {
+      width: 140,
+      flex: 'none'
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: "Alle"
+  }, "Alle Status"), /*#__PURE__*/React.createElement("option", {
+    value: "frei"
+  }, "\u2713 Frei"), /*#__PURE__*/React.createElement("option", {
+    value: "gesperrt"
+  }, "\uD83D\uDD12 Gesperrt"), /*#__PURE__*/React.createElement("option", {
+    value: "quarantaene"
+  }, "\u26A0 Quarant\xE4ne")), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => setShowLog(l => !l)
+  }, "\uD83D\uDCCB Ausbuchungslog (", (ausbuchungsLog || []).length, ")")), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Kategorie"), /*#__PURE__*/React.createElement("th", null, "Bestand / Mindest"), /*#__PURE__*/React.createElement("th", null, "MHD (n\xE4chste)"), /*#__PURE__*/React.createElement("th", null, "Lagerwert"), /*#__PURE__*/React.createElement("th", null, "Aktion"))), /*#__PURE__*/React.createElement("tbody", null, rows.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null, "Bestand / Frei"), /*#__PURE__*/React.createElement("th", null, "MHD (n\xE4chste)"), /*#__PURE__*/React.createElement("th", null, "Lagerwert"), /*#__PURE__*/React.createElement("th", null, "Aktion"))), /*#__PURE__*/React.createElement("tbody", null, rows.length === 0 && /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     colSpan: 6
   }, /*#__PURE__*/React.createElement("div", {
     className: "empty"
@@ -1355,36 +1465,65 @@ function Lager({
     const np = a.positionen[0];
     const days = np ? daysDiff(np.mhd) : null;
     const wert = a.bestand * (np?.ek || a.ek);
+    const st = a.artikelStatus || 'frei';
     return /*#__PURE__*/React.createElement("tr", {
       key: a.id
     }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("div", {
       style: {
         fontWeight: 800
       }
-    }, a.name), a.bestand < a.mindestbestand && /*#__PURE__*/React.createElement("div", {
+    }, a.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 4,
+        marginTop: 3,
+        flexWrap: 'wrap'
+      }
+    }, a.bestand < a.mindestbestand && /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: C.red,
         fontWeight: 700
       }
-    }, "\u26A0 Unterbestand")), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
-      type: "gray"
-    }, a.kategorie)), /*#__PURE__*/React.createElement("td", {
+    }, "\u26A0 Unterbestand"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C.textLight,
+        fontWeight: 600
+      }
+    }, a.kategorie))), /*#__PURE__*/React.createElement("td", null, statusBadge(st), /*#__PURE__*/React.createElement("select", {
+      value: st,
+      onChange: e => setArtikelStatus(a.id, e.target.value),
+      style: {
+        marginTop: 4,
+        fontSize: 11,
+        minHeight: 28,
+        padding: '2px 6px',
+        borderRadius: 6,
+        display: 'block'
+      }
+    }, /*#__PURE__*/React.createElement("option", {
+      value: "frei"
+    }, "\u2713 Frei"), /*#__PURE__*/React.createElement("option", {
+      value: "gesperrt"
+    }, "\uD83D\uDD12 Gesperrt"), /*#__PURE__*/React.createElement("option", {
+      value: "quarantaene"
+    }, "\u26A0 Quarant\xE4ne"))), /*#__PURE__*/React.createElement("td", {
       style: {
         minWidth: 160
       }
     }, /*#__PURE__*/React.createElement(StockBar, {
-      current: a.bestand,
+      current: a.bestandFrei,
       max: a.mindestbestand * 3,
       unit: a.einheit
     }), /*#__PURE__*/React.createElement("div", {
       style: {
         fontSize: 11,
         color: C.textLight,
-        marginTop: 3,
-        fontWeight: 700
+        marginTop: 2,
+        fontWeight: 600
       }
-    }, "Min: ", fmt(a.mindestbestand, 0), " ", a.einheit)), /*#__PURE__*/React.createElement("td", null, np ? /*#__PURE__*/React.createElement(Badge, {
+    }, "Frei: ", fmt(a.bestandFrei, 2), " | Gesamt: ", fmt(a.bestand, 2), " ", a.einheit)), /*#__PURE__*/React.createElement("td", null, np ? /*#__PURE__*/React.createElement(Badge, {
       type: mhdBadge(days)
     }, np.mhd, " (", mhdLabel(days), ")") : /*#__PURE__*/React.createElement("span", {
       style: {
@@ -1412,18 +1551,30 @@ function Lager({
     className: "card-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "card-title"
-  }, "\uD83C\uDFF7 Alle Chargen (FIFO)")), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83C\uDFF7 Alle Chargen (FIFO)"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: C.textMid,
+      fontWeight: 600
+    }
+  }, "Abgelaufen = ausbuchen empfohlen")), /*#__PURE__*/React.createElement("div", {
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Charge"), /*#__PURE__*/React.createElement("th", null, "Menge"), /*#__PURE__*/React.createElement("th", null, "EK"), /*#__PURE__*/React.createElement("th", null, "MHD"), /*#__PURE__*/React.createElement("th", null, "Lagerort"))), /*#__PURE__*/React.createElement("tbody", null, [...lager].sort((a, b) => new Date(a.mhd) - new Date(b.mhd)).map(l => {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Charge"), /*#__PURE__*/React.createElement("th", null, "Menge"), /*#__PURE__*/React.createElement("th", null, "EK"), /*#__PURE__*/React.createElement("th", null, "MHD"), /*#__PURE__*/React.createElement("th", null, "Lagerort"), /*#__PURE__*/React.createElement("th", null, "Art.-Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, [...lager].sort((a, b) => new Date(a.mhd) - new Date(b.mhd)).map(l => {
     const art = getA(artikel, l.artikelId);
     const days = daysDiff(l.mhd);
+    const abgelaufen = days < 0;
+    const artStatus = art?.artikelStatus || 'frei';
     return /*#__PURE__*/React.createElement("tr", {
-      key: l.id
+      key: l.id,
+      style: {
+        background: abgelaufen ? '#FFF5F5' : artStatus !== 'frei' ? '#FFFBEB' : ''
+      }
     }, /*#__PURE__*/React.createElement("td", {
       style: {
-        fontWeight: 700
+        fontWeight: 700,
+        color: abgelaufen ? C.red : C.text
       }
     }, art?.name), /*#__PURE__*/React.createElement("td", {
       style: {
@@ -1435,12 +1586,142 @@ function Lager({
       className: "mono"
     }, fmtE(l.ek)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
       type: mhdBadge(days)
-    }, l.mhd)), /*#__PURE__*/React.createElement("td", {
+    }, l.mhd, abgelaufen ? ' ⚠' : '')), /*#__PURE__*/React.createElement("td", {
       style: {
         color: C.textMid
       }
-    }, l.lagerort));
-  }))))), abgangModal && /*#__PURE__*/React.createElement(Modal, {
+    }, l.lagerort), /*#__PURE__*/React.createElement("td", null, statusBadge(artStatus)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger btn-sm",
+      style: {
+        minHeight: 28,
+        padding: '0 8px',
+        fontSize: 11
+      },
+      onClick: () => {
+        setAusbuchModal({
+          ch: l,
+          art
+        });
+        setAusbuchGrund(abgelaufen ? 'MHD abgelaufen' : '');
+      }
+    }, "\uD83D\uDDD1 Ausbuchen")));
+  }))))), showLog && (ausbuchungsLog || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDCCB Ausbuchungslog (", (ausbuchungsLog || []).length, ")")), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Charge"), /*#__PURE__*/React.createElement("th", null, "Menge"), /*#__PURE__*/React.createElement("th", null, "MHD"), /*#__PURE__*/React.createElement("th", null, "EK/Stk"), /*#__PURE__*/React.createElement("th", null, "Wert"), /*#__PURE__*/React.createElement("th", null, "Grund"))), /*#__PURE__*/React.createElement("tbody", null, (ausbuchungsLog || []).slice(0, 50).map(e => /*#__PURE__*/React.createElement("tr", {
+    key: e.id,
+    style: {
+      opacity: 0.85
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: C.textMid,
+      fontSize: 12
+    }
+  }, e.datum, " ", e.uhrzeit), /*#__PURE__*/React.createElement("td", {
+    style: {
+      fontWeight: 700
+    }
+  }, e.artikelName), /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: C.textMid,
+      fontSize: 12
+    }
+  }, e.charge), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmt(e.menge, 2), " ", e.einheit), /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: e.mhdAbgelaufen ? C.red : C.textMid,
+      fontSize: 12
+    }
+  }, e.mhd, e.mhdAbgelaufen ? ' (abgelaufen)' : ''), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(e.ekProStueck)), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: C.red,
+      fontWeight: 700
+    }
+  }, fmtE(e.wertGesamt)), /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: C.textMid,
+      fontSize: 12
+    }
+  }, e.grund))))))), showLog && (ausbuchungsLog || []).length === 0 && /*#__PURE__*/React.createElement("div", {
+    className: "alert info"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, "Noch keine Ausbuchungen vorhanden.")), ausbuchModal && /*#__PURE__*/React.createElement(Modal, {
+    title: `🗑 Ausbuchen: ${ausbuchModal.art.name}`,
+    onClose: () => {
+      setAusbuchModal(null);
+      setAusbuchGrund('');
+    },
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger btn-xl",
+      onClick: ausbuchen,
+      disabled: !ausbuchGrund.trim()
+    }, "\uD83D\uDDD1 Charge endg\xFCltig ausbuchen"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost",
+      style: {
+        width: '100%'
+      },
+      onClick: () => {
+        setAusbuchModal(null);
+        setAusbuchGrund('');
+      }
+    }, "Abbrechen"))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "alert danger"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\u26A0"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, /*#__PURE__*/React.createElement("strong", null, "Charge wird dauerhaft aus dem Lager entfernt."), /*#__PURE__*/React.createElement("br", null), "Charge: ", ausbuchModal.ch.charge, " \xB7 MHD: ", ausbuchModal.ch.mhd, daysDiff(ausbuchModal.ch.mhd) < 0 ? ' (ABGELAUFEN)' : '', /*#__PURE__*/React.createElement("br", null), "Menge: ", fmt(ausbuchModal.ch.menge, 2), " ", ausbuchModal.art.einheit, " \xB7 Wert: ", fmtE(ausbuchModal.ch.menge * ausbuchModal.ch.ek))), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Ausbuchungsgrund"), /*#__PURE__*/React.createElement("select", {
+    value: ausbuchGrund,
+    onChange: e => setAusbuchGrund(e.target.value),
+    style: {
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 Grund w\xE4hlen \u2014"), /*#__PURE__*/React.createElement("option", null, "MHD abgelaufen"), /*#__PURE__*/React.createElement("option", null, "Verderb / Qualit\xE4tsmangel"), /*#__PURE__*/React.createElement("option", null, "Bruch / Besch\xE4digung"), /*#__PURE__*/React.createElement("option", null, "R\xFCckgabe an Lieferant"), /*#__PURE__*/React.createElement("option", null, "Gesundheitliches Risiko"), /*#__PURE__*/React.createElement("option", null, "Inventurdifferenz"), /*#__PURE__*/React.createElement("option", null, "Sonstiges")), ausbuchGrund === 'Sonstiges' && /*#__PURE__*/React.createElement("input", {
+    placeholder: "Bitte Grund beschreiben\u2026",
+    value: ausbuchGrund === 'Sonstiges' ? '' : ausbuchGrund,
+    onChange: e => setAusbuchGrund(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bg,
+      borderRadius: 12,
+      padding: '10px 14px',
+      border: `1px solid ${C.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 800,
+      color: C.textMid,
+      marginBottom: 4
+    }
+  }, "LOG-EINTRAG wird erstellt:"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.text
+    }
+  }, ausbuchModal.art.name, " \xB7 ", fmt(ausbuchModal.ch.menge, 2), " ", ausbuchModal.art.einheit, " \xB7 EK ", fmtE(ausbuchModal.ch.ek), "/Stk \xB7 Gesamt ", fmtE(ausbuchModal.ch.menge * ausbuchModal.ch.ek)))), abgangModal && /*#__PURE__*/React.createElement(Modal, {
     title: `Entnahme: ${abgangModal.art.name}`,
     onClose: () => setAbgangModal(null),
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
@@ -2195,17 +2476,21 @@ function Rezepturen({
   const kategorien = ['Vorspeise', 'Hauptgericht', 'Beilage', 'Dessert', 'Getränk', 'Buffet'];
   function produzieren() {
     if (!selected) return;
-    // Prüfe ob alle Zutaten verfügbar sind
-    const fehlend = selected.zutaten.filter(z => getLB(lager, z.artikelId) < z.menge * portionen);
+    // Nur FREIE Chargen mit gültigem MHD (taggenau OK)
+    const freieChargen = aId => lager.filter(l => l.artikelId === aId && (l.artikelStatus || 'frei') === 'frei' && daysDiff(l.mhd) >= 0).sort((a, b) => new Date(a.mhd) - new Date(b.mhd));
+    const fehlend = selected.zutaten.filter(z => {
+      const verfuegbar = freieChargen(z.artikelId).reduce((s, l) => s + l.menge, 0);
+      return verfuegbar < z.menge * portionen;
+    });
     if (fehlend.length > 0) {
       const namen = fehlend.map(z => getA(artikel, z.artikelId)?.name || '?').join(', ');
-      toast('Nicht genug Bestand: ' + namen, 'error');
+      toast('Nicht genug freier Bestand (gültig): ' + namen, 'error');
       return;
     }
     const changes = {};
     for (const z of selected.zutaten) {
       let needed = z.menge * portionen;
-      const chargen = lager.filter(l => l.artikelId === z.artikelId).sort((a, b) => new Date(a.mhd) - new Date(b.mhd));
+      const chargen = freieChargen(z.artikelId);
       for (const ch of chargen) {
         if (needed <= 0) break;
         const take = Math.min(ch.menge, needed);
@@ -2313,7 +2598,8 @@ function Rezepturen({
     const kosten = getRezKosten(rez, artikel, lager);
     const marge = rez.vkPreis - kosten;
     const margeP = rez.vkPreis > 0 ? marge / rez.vkPreis * 100 : 0;
-    const machbar = rez.zutaten.every(z => getLB(lager, z.artikelId) >= z.menge);
+    const maxPort = getMaxPortionen(rez, lager);
+    const machbar = maxPort >= 1;
     return /*#__PURE__*/React.createElement("div", {
       key: rez.id,
       className: `rez-card${selected?.id === rez.id ? ' selected' : ''}`,
@@ -2344,9 +2630,11 @@ function Rezepturen({
         gap: 4,
         alignItems: 'flex-end'
       }
-    }, /*#__PURE__*/React.createElement(Badge, {
-      type: machbar ? 'green' : 'red'
-    }, machbar ? '✓ OK' : '✗ Fehlend'), /*#__PURE__*/React.createElement("div", {
+    }, maxPort >= 1 ? /*#__PURE__*/React.createElement("span", {
+      className: `max-port${maxPort < 5 ? ' warn' : ''}`
+    }, "Max ", maxPort, " Port.") : /*#__PURE__*/React.createElement("span", {
+      className: "max-port none"
+    }, "\u2717 Kein Bestand"), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 4
@@ -5310,7 +5598,8 @@ function App() {
           archivWE: parsed.archivWE || [],
           archivBest: parsed.archivBest || [],
           tagesabschluesse: parsed.tagesabschluesse || [],
-          stornoProtokoll: parsed.stornoProtokoll || []
+          stornoProtokoll: parsed.stornoProtokoll || [],
+          ausbuchungsLog: parsed.ausbuchungsLog || []
         };
       }
       return INIT;
@@ -5334,7 +5623,8 @@ function App() {
         archivWE: (data.archivWE || []).slice(0, 200),
         archivBest: (data.archivBest || []).slice(0, 200),
         tagesabschluesse: (data.tagesabschluesse || []).slice(0, 365),
-        stornoProtokoll: (data.stornoProtokoll || []).slice(0, 500)
+        stornoProtokoll: (data.stornoProtokoll || []).slice(0, 500),
+        ausbuchungsLog: (data.ausbuchungsLog || []).slice(0, 1000)
       };
       localStorage.setItem('menumetric-v1', JSON.stringify(trimmedData));
     } catch {}
