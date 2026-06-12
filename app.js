@@ -230,9 +230,58 @@ const css = `
   /* Ausbuchen-Log */
   .log-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;}
   .log-row:last-child{border-bottom:none;}
+  /* Lagerorte */
+  .lo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:16px;}
+  .lo-card{background:white;border:1.5px solid #E2E8F0;border-radius:16px;padding:16px;position:relative;}
+  .lo-card.kuehlraum{border-left:4px solid #2563EB;}
+  .lo-card.tiefkuehl{border-left:4px solid #7C3AED;}
+  .lo-card.trocken{border-left:4px solid #D97706;}
+  .lo-typ-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:800;}
+  .lo-typ-kuehlraum{background:#EFF6FF;color:#2563EB;}
+  .lo-typ-tiefkuehl{background:#EDE9FE;color:#7C3AED;}
+  .lo-typ-trocken{background:#FEF3C7;color:#D97706;}
+  .lo-temp{font-size:12px;color:#6B7280;font-weight:600;margin-top:4px;}
+  .lo-bestand-bar{height:6px;background:#F1F5F9;border-radius:3px;overflow:hidden;margin-top:8px;}
+  .lo-bestand-fill{height:100%;border-radius:3px;background:#2563EB;}
 `;
 // ── DATA ──────────────────────────────────────────────────────────────────────
 const INIT = {
+  lagerorte: [{
+    id: 'LA1',
+    name: "Kühlraum A",
+    typ: "kuehlraum",
+    temp: "+2 bis +4°C",
+    kapazitaet: "",
+    bemerkung: "Fleisch, Fisch, Molkereiprodukte"
+  }, {
+    id: 'LA2',
+    name: "Kühlraum B",
+    typ: "kuehlraum",
+    temp: "+4 bis +8°C",
+    kapazitaet: "",
+    bemerkung: "Gemüse, Obst, Getränke"
+  }, {
+    id: 'LA3',
+    name: "Tiefkühl",
+    typ: "tiefkuehl",
+    temp: "-18°C",
+    kapazitaet: "",
+    bemerkung: "Tiefkühlware"
+  }, {
+    id: 'LA4',
+    name: "Weinkeller",
+    typ: "trocken",
+    temp: "+12 bis +16°C",
+    kapazitaet: "",
+    bemerkung: "Wein, Spirituosen"
+  }, {
+    id: 'LA5',
+    name: "Trockenlager",
+    typ: "trocken",
+    temp: "Raumtemperatur",
+    kapazitaet: "",
+    bemerkung: "Trockenware, Konserven"
+  }],
   lieferanten: [{
     id: 1,
     name: "Frischmarkt GmbH",
@@ -266,7 +315,8 @@ const INIT = {
     lieferantId: 1,
     mindestbestand: 10,
     ek: 14.50,
-    mwst: 7
+    mwst: 7,
+    standardLagerortId: 'LA1'
   }, {
     id: 2,
     name: "Lachs (frisch)",
@@ -275,7 +325,8 @@ const INIT = {
     lieferantId: 1,
     mindestbestand: 5,
     ek: 18.90,
-    mwst: 7
+    mwst: 7,
+    standardLagerortId: 'LA1'
   }, {
     id: 3,
     name: "Tomaten (Kiste)",
@@ -284,7 +335,8 @@ const INIT = {
     lieferantId: 3,
     mindestbestand: 3,
     ek: 22.00,
-    mwst: 7
+    mwst: 7,
+    standardLagerortId: 'LA2'
   }, {
     id: 4,
     name: "Chianti DOC",
@@ -293,7 +345,8 @@ const INIT = {
     lieferantId: 2,
     mindestbestand: 12,
     ek: 8.50,
-    mwst: 19
+    mwst: 19,
+    standardLagerortId: 'LA4'
   }, {
     id: 5,
     name: "Butter 250g",
@@ -302,7 +355,8 @@ const INIT = {
     lieferantId: 3,
     mindestbestand: 20,
     ek: 1.85,
-    mwst: 7
+    mwst: 7,
+    standardLagerortId: 'LA1'
   }, {
     id: 6,
     name: "Mehl Type 550",
@@ -311,7 +365,8 @@ const INIT = {
     lieferantId: 3,
     mindestbestand: 15,
     ek: 0.95,
-    mwst: 7
+    mwst: 7,
+    standardLagerortId: 'LA5'
   }, {
     id: 7,
     name: "Prosecco DOC",
@@ -320,7 +375,8 @@ const INIT = {
     lieferantId: 2,
     mindestbestand: 24,
     ek: 5.20,
-    mwst: 19
+    mwst: 19,
+    standardLagerortId: 'LA4'
   }, {
     id: 8,
     name: "Kartoffeln",
@@ -329,7 +385,8 @@ const INIT = {
     lieferantId: 3,
     mindestbestand: 20,
     ek: 0.70,
-    mwst: 7
+    mwst: 7,
+    standardLagerortId: 'LA2'
   }],
   lager: [{
     id: 1,
@@ -830,6 +887,20 @@ const daysDiff = ds => Math.ceil((new Date(ds) - new Date()) / 86400000);
 const getLB = (lager, aId) => lager.filter(l => l.artikelId === aId).reduce((s, l) => s + l.menge, 0);
 const getA = (artikel, id) => artikel.find(a => a.id === id);
 const getL = (lieferanten, id) => lieferanten.find(l => l.id === id);
+const getLO = (lagerorte, id) => (lagerorte || []).find(l => l.id === id);
+const LO_TYPEN = [{
+  id: 'kuehlraum',
+  label: 'Kühlraum',
+  icon: '🧊'
+}, {
+  id: 'tiefkuehl',
+  label: 'Tiefkühl',
+  icon: '❄️'
+}, {
+  id: 'trocken',
+  label: 'Trockenlager',
+  icon: '📦'
+}];
 const mhdBadge = days => days < 0 ? 'red' : days <= 3 ? 'red' : days <= 7 ? 'yellow' : 'green';
 const mhdLabel = days => days < 0 ? 'Abgelaufen' : days <= 3 ? `${days}d ⚠` : days <= 7 ? `${days} Tage` : 'OK';
 
@@ -2358,18 +2429,23 @@ function Wareneingang({
     onChange: e => {
       const art = getA(artikel, Number(e.target.value));
       const pcmEk = getBestEkFromPCM(Number(e.target.value));
+      const lo = getLO(data.lagerorte || [], art?.standardLagerortId);
       setPos(p => ({
         ...p,
         artikelId: e.target.value,
-        ek: pcmEk ? pcmEk.toFixed(2) : art?.ek || ''
+        ek: pcmEk ? pcmEk.toFixed(2) : art?.ek || '',
+        lagerort: lo?.name || p.lagerort
       }));
     }
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "\u2014 w\xE4hlen \u2014"), artikel.map(a => /*#__PURE__*/React.createElement("option", {
-    key: a.id,
-    value: a.id
-  }, a.name, " (", a.einheit, ")")))), /*#__PURE__*/React.createElement("div", {
+  }, "\u2014 w\xE4hlen \u2014"), artikel.map(a => {
+    const lo = getLO(data.lagerorte || [], a.standardLagerortId);
+    return /*#__PURE__*/React.createElement("option", {
+      key: a.id,
+      value: a.id
+    }, a.name, " (", a.einheit, ")", lo ? ' → ' + lo.name : '');
+  }))), /*#__PURE__*/React.createElement("div", {
     className: "form-group"
   }, /*#__PURE__*/React.createElement("label", {
     className: "form-label"
@@ -2421,9 +2497,12 @@ function Wareneingang({
       ...p,
       lagerort: e.target.value
     }))
-  }, lagerorte.map(o => /*#__PURE__*/React.createElement("option", {
-    key: o
-  }, o)))), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 w\xE4hlen \u2014"), (data.lagerorte || []).map(lo => /*#__PURE__*/React.createElement("option", {
+    key: lo.id,
+    value: lo.name
+  }, LO_TYPEN.find(t => t.id === lo.typ)?.icon, " ", lo.name, lo.temp ? ' (' + lo.temp + ')' : '')))), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary",
     onClick: addPos,
     disabled: !pos.artikelId
@@ -3452,15 +3531,19 @@ function Stammdaten({
   const [tab, setTab] = useState('artikel');
   const {
     artikel,
-    lieferanten
+    lieferanten,
+    lagerorte = []
   } = data;
   const [artModal, setArtModal] = useState(false);
   const [liefModal, setLiefModal] = useState(false);
+  const [loModal, setLoModal] = useState(false);
+  const [editLO, setEditLO] = useState(null); // null=neu, obj=bearbeiten
   const [artForm, setArtForm] = useState({
     name: '',
     einheit: 'kg',
     kategorie: 'Fleisch',
     lieferantId: '',
+    standardLagerortId: '',
     mindestbestand: 5,
     ek: '',
     mwst: 7,
@@ -3478,7 +3561,73 @@ function Stammdaten({
     email: '',
     zahlungsziel: 14
   });
+  const [loForm, setLoForm] = useState({
+    name: '',
+    typ: 'kuehlraum',
+    temp: '',
+    kapazitaet: '',
+    bemerkung: ''
+  });
   const kategorien = ['Fleisch', 'Fisch', 'Gemüse', 'Obst', 'Molkerei', 'Wein', 'Getränke', 'Trocken', 'Gewürze', 'Sonstiges'];
+  function saveLO() {
+    if (!loForm.name.trim()) {
+      toast('Name erforderlich', 'warn');
+      return;
+    }
+    if (editLO) {
+      setData(d => ({
+        ...d,
+        lagerorte: d.lagerorte.map(l => l.id === editLO.id ? {
+          ...l,
+          ...loForm
+        } : l)
+      }));
+      toast(loForm.name + ' aktualisiert', 'success');
+    } else {
+      const newId = 'LA' + Date.now().toString(36).toUpperCase().slice(-4);
+      setData(d => ({
+        ...d,
+        lagerorte: [...(d.lagerorte || []), {
+          ...loForm,
+          id: newId
+        }]
+      }));
+      toast(loForm.name + ' angelegt', 'success');
+    }
+    setLoModal(false);
+    setEditLO(null);
+    setLoForm({
+      name: '',
+      typ: 'kuehlraum',
+      temp: '',
+      kapazitaet: '',
+      bemerkung: ''
+    });
+  }
+  function deleteLO(lo) {
+    const inUse = artikel.some(a => a.standardLagerortId === lo.id) || data.lager.some(l => l.lagerort === lo.name || l.lagerortId === lo.id);
+    if (inUse) {
+      toast('Lagerort wird noch verwendet – zuerst Artikel umbuchen', 'warn');
+      return;
+    }
+    if (!window.confirm(`"${lo.name}" löschen?`)) return;
+    setData(d => ({
+      ...d,
+      lagerorte: (d.lagerorte || []).filter(l => l.id !== lo.id)
+    }));
+    toast('Lagerort gelöscht', 'warn');
+  }
+  function openEditLO(lo) {
+    setEditLO(lo);
+    setLoForm({
+      name: lo.name,
+      typ: lo.typ,
+      temp: lo.temp || '',
+      kapazitaet: lo.kapazitaet || '',
+      bemerkung: lo.bemerkung || ''
+    });
+    setLoModal(true);
+  }
   function saveArt() {
     if (!artForm.name.trim()) {
       toast('Bitte Artikelbezeichnung eingeben', 'warn');
@@ -3494,9 +3643,15 @@ function Stammdaten({
       einheit: artForm.einheit,
       kategorie: artForm.kategorie,
       lieferantId: artForm.lieferantId ? Number(artForm.lieferantId) : null,
+      standardLagerortId: artForm.standardLagerortId || null,
       mindestbestand: Number(artForm.mindestbestand) || 0,
       ek: Number(artForm.ek),
-      mwst: Number(artForm.mwst)
+      mwst: Number(artForm.mwst),
+      allergene: artForm.allergene || [],
+      kcal: artForm.kcal ? Number(artForm.kcal) : null,
+      eiweiss: artForm.eiweiss ? Number(artForm.eiweiss) : null,
+      fett: artForm.fett ? Number(artForm.fett) : null,
+      kh: artForm.kh ? Number(artForm.kh) : null
     };
     setData(d => ({
       ...d,
@@ -3508,6 +3663,7 @@ function Stammdaten({
       einheit: 'kg',
       kategorie: 'Fleisch',
       lieferantId: '',
+      standardLagerortId: '',
       mindestbestand: 5,
       ek: '',
       mwst: 7,
@@ -3548,7 +3704,10 @@ function Stammdaten({
   }, "\uD83C\uDFF7 Artikel (", artikel.length, ")"), /*#__PURE__*/React.createElement("button", {
     className: `tab-btn${tab === 'lieferanten' ? ' active' : ''}`,
     onClick: () => setTab('lieferanten')
-  }, "\uD83C\uDFE2 Lieferanten (", lieferanten.length, ")")), tab === 'artikel' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+  }, "\uD83C\uDFE2 Lieferanten (", lieferanten.length, ")"), /*#__PURE__*/React.createElement("button", {
+    className: `tab-btn${tab === 'lagerorte' ? ' active' : ''}`,
+    onClick: () => setTab('lagerorte')
+  }, "\uD83D\uDDC3 Lagerorte (", (lagerorte || []).length, ")")), tab === 'artikel' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary btn-lg",
     style: {
       marginBottom: 14,
@@ -3561,7 +3720,7 @@ function Stammdaten({
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Kategorie"), /*#__PURE__*/React.createElement("th", null, "Einheit"), /*#__PURE__*/React.createElement("th", null, "EK"), /*#__PURE__*/React.createElement("th", null, "MwSt."), /*#__PURE__*/React.createElement("th", null, "Mindestbestand"), /*#__PURE__*/React.createElement("th", null, "Allergene"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, artikel.map(a => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Kategorie"), /*#__PURE__*/React.createElement("th", null, "Einheit"), /*#__PURE__*/React.createElement("th", null, "EK"), /*#__PURE__*/React.createElement("th", null, "MwSt."), /*#__PURE__*/React.createElement("th", null, "Mindestbestand"), /*#__PURE__*/React.createElement("th", null, "Std.-Lagerort"), /*#__PURE__*/React.createElement("th", null, "Allergene"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, artikel.map(a => /*#__PURE__*/React.createElement("tr", {
     key: a.id
   }, /*#__PURE__*/React.createElement("td", {
     style: {
@@ -3581,7 +3740,17 @@ function Stammdaten({
     }
   }, a.mwst, "%"), /*#__PURE__*/React.createElement("td", {
     className: "mono"
-  }, a.mindestbestand, " ", a.einheit), /*#__PURE__*/React.createElement("td", null, (a.allergene || []).map(id => {
+  }, a.mindestbestand, " ", a.einheit), /*#__PURE__*/React.createElement("td", null, (() => {
+    const lo = getLO(lagerorte, a.standardLagerortId);
+    return lo ? /*#__PURE__*/React.createElement("span", {
+      className: `lo-typ-badge lo-typ-${lo.typ}`
+    }, LO_TYPEN.find(t => t.id === lo.typ)?.icon, " ", lo.name) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.textLight,
+        fontSize: 12
+      }
+    }, "\u2014");
+  })()), /*#__PURE__*/React.createElement("td", null, (a.allergene || []).map(id => {
     const al = ALLERGENE_LIST.find(x => x.id === id);
     return al ? /*#__PURE__*/React.createElement("span", {
       key: id,
@@ -3746,6 +3915,21 @@ function Stammdaten({
     className: "form-group"
   }, /*#__PURE__*/React.createElement("label", {
     className: "form-label"
+  }, "Standard-Lagerort"), /*#__PURE__*/React.createElement("select", {
+    value: artForm.standardLagerortId || '',
+    onChange: e => setArtForm(f => ({
+      ...f,
+      standardLagerortId: e.target.value
+    }))
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 kein Standard \u2014"), (lagerorte || []).map(lo => /*#__PURE__*/React.createElement("option", {
+    key: lo.id,
+    value: lo.id
+  }, LO_TYPEN.find(t => t.id === lo.typ)?.icon, " ", lo.name, " ", lo.temp ? '(' + lo.temp + ')' : '')))), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
   }, "Allergene"), /*#__PURE__*/React.createElement(AllergenPicker, {
     value: artForm.allergene || [],
     onChange: v => setArtForm(f => ({
@@ -3893,6 +4077,256 @@ function Stammdaten({
       ...f,
       email: e.target.value
     }))
+  }))), tab === 'lagerorte' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary btn-lg",
+    style: {
+      marginBottom: 14,
+      width: '100%'
+    },
+    onClick: () => {
+      setEditLO(null);
+      setLoForm({
+        name: '',
+        typ: 'kuehlraum',
+        temp: '',
+        kapazitaet: '',
+        bemerkung: ''
+      });
+      setLoModal(true);
+    }
+  }, "+ Lagerort anlegen"), /*#__PURE__*/React.createElement("div", {
+    className: "lo-grid"
+  }, (lagerorte || []).map(lo => {
+    const artikelImLO = artikel.filter(a => a.standardLagerortId === lo.id);
+    const chargenImLO = data.lager.filter(l => l.lagerortId === lo.id || l.lagerort === lo.name);
+    const wertImLO = chargenImLO.reduce((s, l) => s + l.menge * l.ek, 0);
+    return /*#__PURE__*/React.createElement("div", {
+      key: lo.id,
+      className: `lo-card ${lo.typ}`
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 16,
+        fontWeight: 900,
+        color: C.text
+      }
+    }, LO_TYPEN.find(t => t.id === lo.typ)?.icon, " ", lo.name), /*#__PURE__*/React.createElement("span", {
+      className: `lo-typ-badge lo-typ-${lo.typ}`
+    }, LO_TYPEN.find(t => t.id === lo.typ)?.label)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 4
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost btn-sm",
+      style: {
+        minHeight: 28,
+        padding: '0 8px'
+      },
+      onClick: () => openEditLO(lo)
+    }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger btn-sm",
+      style: {
+        minHeight: 28,
+        padding: '0 8px'
+      },
+      onClick: () => deleteLO(lo)
+    }, "\uD83D\uDDD1"))), lo.temp && /*#__PURE__*/React.createElement("div", {
+      className: "lo-temp"
+    }, "\uD83C\uDF21 ", lo.temp), lo.bemerkung && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.textMid,
+        marginTop: 4
+      }
+    }, lo.bemerkung), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 16,
+        marginTop: 12,
+        paddingTop: 10,
+        borderTop: `1px solid ${C.border}`
+      }
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        fontWeight: 800,
+        color: C.textLight,
+        textTransform: 'uppercase'
+      }
+    }, "Artikel"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 800,
+        fontSize: 15
+      }
+    }, artikelImLO.length)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        fontWeight: 800,
+        color: C.textLight,
+        textTransform: 'uppercase'
+      }
+    }, "Chargen"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 800,
+        fontSize: 15
+      }
+    }, chargenImLO.length)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 10,
+        fontWeight: 800,
+        color: C.textLight,
+        textTransform: 'uppercase'
+      }
+    }, "Wert"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: 'JetBrains Mono',
+        fontWeight: 800,
+        fontSize: 14,
+        color: C.blue
+      }
+    }, fmtE(wertImLO)))), artikelImLO.length > 0 && /*#__PURE__*/React.createElement("div", {
+      style: {
+        marginTop: 8,
+        paddingTop: 8,
+        borderTop: `1px solid ${C.border}`,
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 4
+      }
+    }, artikelImLO.slice(0, 5).map(a => /*#__PURE__*/React.createElement(Badge, {
+      key: a.id,
+      type: "gray"
+    }, a.name)), artikelImLO.length > 5 && /*#__PURE__*/React.createElement(Badge, {
+      type: "gray"
+    }, "+", artikelImLO.length - 5, " weitere")));
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDCCA Logistik-\xDCbersicht")), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Lagerort"), /*#__PURE__*/React.createElement("th", null, "Typ"), /*#__PURE__*/React.createElement("th", null, "Temperatur"), /*#__PURE__*/React.createElement("th", null, "Std.-Artikel"), /*#__PURE__*/React.createElement("th", null, "Chargen"), /*#__PURE__*/React.createElement("th", null, "Lagerwert"))), /*#__PURE__*/React.createElement("tbody", null, (lagerorte || []).map(lo => {
+    const aCount = artikel.filter(a => a.standardLagerortId === lo.id).length;
+    const chargen = data.lager.filter(l => l.lagerortId === lo.id || l.lagerort === lo.name);
+    const wert = chargen.reduce((s, l) => s + l.menge * l.ek, 0);
+    return /*#__PURE__*/React.createElement("tr", {
+      key: lo.id
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 800
+      }
+    }, LO_TYPEN.find(t => t.id === lo.typ)?.icon, " ", lo.name), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("span", {
+      className: `lo-typ-badge lo-typ-${lo.typ}`
+    }, LO_TYPEN.find(t => t.id === lo.typ)?.label)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: C.textMid,
+        fontSize: 13
+      }
+    }, lo.temp || '—'), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, aCount), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, chargen.length), /*#__PURE__*/React.createElement("td", {
+      className: "mono",
+      style: {
+        color: C.blue,
+        fontWeight: 800
+      }
+    }, fmtE(wert)));
+  })))))), loModal && /*#__PURE__*/React.createElement(Modal, {
+    title: editLO ? 'Lagerort bearbeiten' : 'Neuer Lagerort',
+    onClose: () => {
+      setLoModal(false);
+      setEditLO(null);
+    },
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-primary btn-xl",
+      onClick: saveLO
+    }, editLO ? 'Speichern' : 'Anlegen'), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost",
+      style: {
+        width: '100%'
+      },
+      onClick: () => {
+        setLoModal(false);
+        setEditLO(null);
+      }
+    }, "Abbrechen"))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Name"), /*#__PURE__*/React.createElement("input", {
+    value: loForm.name,
+    placeholder: "z.B. K\xFChlraum A",
+    onChange: e => setLoForm(f => ({
+      ...f,
+      name: e.target.value
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-row"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Typ"), /*#__PURE__*/React.createElement("select", {
+    value: loForm.typ,
+    onChange: e => setLoForm(f => ({
+      ...f,
+      typ: e.target.value
+    }))
+  }, LO_TYPEN.map(t => /*#__PURE__*/React.createElement("option", {
+    key: t.id,
+    value: t.id
+  }, t.icon, " ", t.label)))), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Temperatur"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "z.B. +2 bis +4\xB0C",
+    value: loForm.temp,
+    onChange: e => setLoForm(f => ({
+      ...f,
+      temp: e.target.value
+    }))
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Kapazit\xE4t (optional)"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "z.B. 500 kg oder 20 Paletten",
+    value: loForm.kapazitaet,
+    onChange: e => setLoForm(f => ({
+      ...f,
+      kapazitaet: e.target.value
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Bemerkung"), /*#__PURE__*/React.createElement("textarea", {
+    value: loForm.bemerkung,
+    placeholder: "Verwendungszweck, Besonderheiten\u2026",
+    onChange: e => setLoForm(f => ({
+      ...f,
+      bemerkung: e.target.value
+    })),
+    rows: 2,
+    style: {
+      minHeight: 'auto',
+      height: 70
+    }
   }))));
 }
 // ── PCM MODULE ────────────────────────────────────────────────────────────────
@@ -5599,7 +6033,8 @@ function App() {
           archivBest: parsed.archivBest || [],
           tagesabschluesse: parsed.tagesabschluesse || [],
           stornoProtokoll: parsed.stornoProtokoll || [],
-          ausbuchungsLog: parsed.ausbuchungsLog || []
+          ausbuchungsLog: parsed.ausbuchungsLog || [],
+          lagerorte: parsed.lagerorte || INIT.lagerorte
         };
       }
       return INIT;
