@@ -1500,8 +1500,19 @@ function Wareneingang({
   });
   const [mhdErr, setMhdErr] = useState(false);
   const lagerorte = ['Kühlraum A', 'Kühlraum B', 'Weinkeller', 'Trockenlager', 'Tiefkühl'];
-  // FIX-1: offene Bestellungen die auf WE warten
   const offeneBest = bestellungen.filter(b => b.status === 'Bestellt');
+
+  // Beim Öffnen: pendingWE aus sessionStorage laden (von Bestellungen-Einbuchen-Button)
+  useEffect(() => {
+    try {
+      const pending = sessionStorage.getItem('menumetric-pendingWE');
+      if (pending) {
+        sessionStorage.removeItem('menumetric-pendingWE');
+        const best = JSON.parse(pending);
+        uebernehmeBest(best);
+      }
+    } catch {}
+  }, []);
   function resetForm() {
     setStep(0);
     setForm({
@@ -1737,7 +1748,7 @@ function Wareneingang({
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"), /*#__PURE__*/React.createElement("th", null, "Status"))), /*#__PURE__*/React.createElement("tbody", null, wareneingaenge.map(we => {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, wareneingaenge.map(we => {
     const lief = getL(lieferanten, we.lieferantId);
     const wert = we.gesamtwert || we.positionen.reduce((s, p) => s + p.menge * p.ek, 0);
     return /*#__PURE__*/React.createElement("tr", {
@@ -1753,7 +1764,21 @@ function Wareneingang({
       className: "mono"
     }, fmtE(wert)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
       type: "green"
-    }, we.status)));
+    }, we.status)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost btn-sm",
+      style: {
+        minHeight: 28,
+        padding: '0 8px'
+      },
+      onClick: () => {
+        if (!window.confirm('Wareneingang ' + we.belegnr + ' löschen? (Lagerbestände werden NICHT rückgebucht)')) return;
+        setData(d => ({
+          ...d,
+          wareneingaenge: d.wareneingaenge.filter(x => x.id !== we.id)
+        }));
+        toast('Wareneingang gelöscht', 'warn');
+      }
+    }, "\uD83D\uDDD1")));
   }))))), (data.archivWE || []).length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
@@ -1766,7 +1791,7 @@ function Wareneingang({
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"))), /*#__PURE__*/React.createElement("tbody", null, (data.archivWE || []).slice(0, 20).map(we => {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, (data.archivWE || []).slice(0, 20).map(we => {
     const wert = we.gesamtwert || we.positionen.reduce((s, p) => s + p.menge * p.ek, 0);
     return /*#__PURE__*/React.createElement("tr", {
       key: we.id,
@@ -1790,7 +1815,22 @@ function Wareneingang({
       className: "mono"
     }, we.positionen.length), /*#__PURE__*/React.createElement("td", {
       className: "mono"
-    }, fmtE(wert)));
+    }, fmtE(wert)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost btn-sm",
+      style: {
+        minHeight: 28,
+        padding: '0 8px',
+        opacity: 0.6
+      },
+      onClick: () => {
+        if (!window.confirm('Archiveintrag löschen?')) return;
+        setData(d => ({
+          ...d,
+          archivWE: (d.archivWE || []).filter(x => x.id !== we.id)
+        }));
+        toast('Archiveintrag gelöscht', 'warn');
+      }
+    }, "\uD83D\uDDD1")));
   }))))));
   if (step === 1) return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "steps"
@@ -2739,36 +2779,50 @@ function Bestellungen({
     bestLieferantId: getBestLieferantId(a.id, a.lieferantId) // FIX-5
   }));
   function bestellenAlle() {
+    // Nur Artikel bestellen die noch KEINE offene/bestellte Bestellung haben
+    const bereitsBestelltIds = new Set(bestellungen.flatMap(b => b.positionen.map(p => p.artikelId)));
+    const zuBestellen = vorschlaege.filter(a => !bereitsBestelltIds.has(a.id));
+    if (zuBestellen.length === 0) {
+      toast('Für alle Artikel existiert bereits eine Bestellung', 'info');
+      return;
+    }
     const byLief = {};
-    vorschlaege.forEach(a => {
+    zuBestellen.forEach(a => {
       const lid = a.bestLieferantId;
-      if (!byLief[lid]) byLief[lid] = [];
-      // FIX-11: auf Gebindegröße aufrunden
+      const lief = getL(lieferanten, lid);
+      if (!byLief[lid]) byLief[lid] = {
+        lieferantId: lid,
+        lieferantName: lief?.name || '',
+        positionen: []
+      };
       const kat = PCM_KATALOG.find(k => k.artikelId === a.id && k.lieferantId === lid);
       let menge = a.fehlmenge * 1.5;
       if (kat) {
         const bg = kat.gebinde.reduce((b, g) => g.ek / g.menge < b.ek / b.menge ? g : b, kat.gebinde[0]);
         menge = Math.ceil(a.fehlmenge / bg.menge) * bg.menge;
       }
-      byLief[lid].push({
+      byLief[lid].positionen.push({
         artikelId: a.id,
+        artikelName: a.name,
         menge,
-        ek: a.ek
+        ek: a.ek,
+        einheit: a.einheit
       });
     });
-    const newBest = Object.entries(byLief).map(([lid, pos]) => ({
+    const newBest = Object.values(byLief).map(lief => ({
       id: Date.now() + Math.random(),
-      lieferantId: Number(lid),
+      lieferantId: lief.lieferantId,
+      lieferantName: lief.lieferantName,
       datum: todayStr(),
       status: 'Offen',
-      belegnr: `BE-${Date.now().toString().slice(-5)}`,
-      positionen: pos
+      belegnr: 'BE-' + Math.random().toString(36).slice(2, 7).toUpperCase(),
+      positionen: lief.positionen
     }));
     setData(d => ({
       ...d,
       bestellungen: [...newBest, ...d.bestellungen]
     }));
-    toast(`${newBest.length} Bestellung(en) angelegt (PCM-optimiert)`, 'success');
+    toast(newBest.length + ' Bestellung(en) angelegt', 'success');
   }
   function setStatus(id, status) {
     if (status === 'Geliefert') {
@@ -2802,16 +2856,28 @@ function Bestellungen({
   const offen = bestellungen.filter(b => b.status === 'Offen');
   const bestellt = bestellungen.filter(b => b.status === 'Bestellt');
   const geliefert = bestellungen.filter(b => b.status === 'Geliefert');
-  return /*#__PURE__*/React.createElement("div", null, vorschlaege.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
-    className: "alert warn"
-  }, /*#__PURE__*/React.createElement("span", {
-    className: "alert-icon"
-  }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
-    className: "alert-text"
-  }, vorschlaege.length, " Artikel unter Mindestbestand \u2013 Ampel-optimierter Vorschlag"), /*#__PURE__*/React.createElement("button", {
-    className: "btn btn-primary btn-sm",
-    onClick: bestellenAlle
-  }, "Alle bestellen")), /*#__PURE__*/React.createElement("div", {
+  return /*#__PURE__*/React.createElement("div", null, vorschlaege.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, (() => {
+    // Zeige "Alle bestellen" nur wenn noch keine offene Bestellung für diese Artikel existiert
+    const bereitsBestelltIds = new Set(bestellungen.flatMap(b => b.positionen.map(p => p.artikelId)));
+    const nochNichtBestellt = vorschlaege.filter(a => !bereitsBestelltIds.has(a.id));
+    if (nochNichtBestellt.length === 0) return /*#__PURE__*/React.createElement("div", {
+      className: "alert info"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "alert-icon"
+    }, "\u2705"), /*#__PURE__*/React.createElement("div", {
+      className: "alert-text"
+    }, "F\xFCr alle Unterbestand-Artikel wurde bereits eine Bestellung angelegt."));
+    return /*#__PURE__*/React.createElement("div", {
+      className: "alert warn"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "alert-icon"
+    }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
+      className: "alert-text"
+    }, nochNichtBestellt.length, " Artikel unter Mindestbestand ohne laufende Bestellung"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-primary btn-sm",
+      onClick: bestellenAlle
+    }, "Alle bestellen"));
+  })(), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card-head"
@@ -2888,13 +2954,34 @@ function Bestellungen({
       className: "mono"
     }, fmtE(wert)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
       type: b.status === 'Offen' ? 'yellow' : b.status === 'Bestellt' ? 'blue' : 'green'
-    }, b.status)), /*#__PURE__*/React.createElement("td", null, b.status === 'Offen' && /*#__PURE__*/React.createElement("button", {
+    }, b.status)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        display: 'flex',
+        gap: 4,
+        flexWrap: 'wrap'
+      }
+    }, b.status === 'Offen' && /*#__PURE__*/React.createElement("button", {
       className: "btn btn-ghost btn-sm",
       onClick: () => setStatus(b.id, 'Bestellt')
     }, "Best\xE4tigen"), b.status === 'Bestellt' && /*#__PURE__*/React.createElement("button", {
       className: "btn btn-success btn-sm",
-      onClick: () => setPage('wareneingang')
-    }, "\uD83D\uDCE5 Einbuchen")));
+      onClick: () => {
+        try {
+          sessionStorage.setItem('menumetric-pendingWE', JSON.stringify(b));
+        } catch {}
+        setPage('wareneingang');
+      }
+    }, "\uD83D\uDCE5 Einbuchen"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger btn-sm",
+      onClick: () => {
+        if (!window.confirm('Bestellung ' + b.belegnr + ' löschen?')) return;
+        setData(d => ({
+          ...d,
+          bestellungen: d.bestellungen.filter(x => x.id !== b.id)
+        }));
+        toast('Bestellung gelöscht', 'warn');
+      }
+    }, "\uD83D\uDDD1")));
   })))))), bestellungen.length === 0 && vorschlaege.length === 0 && /*#__PURE__*/React.createElement("div", {
     className: "empty"
   }, /*#__PURE__*/React.createElement("div", {
@@ -2919,7 +3006,7 @@ function Bestellungen({
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Geliefert am"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"))), /*#__PURE__*/React.createElement("tbody", null, archivBest.slice(0, 20).map(b => {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Geliefert am"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, archivBest.slice(0, 20).map(b => {
     const lief = getL(lieferanten, b.lieferantId);
     const wert = b.positionen.reduce((s, p) => s + p.menge * p.ek, 0);
     return /*#__PURE__*/React.createElement("tr", {
@@ -2949,7 +3036,22 @@ function Bestellungen({
       className: "mono"
     }, b.positionen.length), /*#__PURE__*/React.createElement("td", {
       className: "mono"
-    }, fmtE(wert)));
+    }, fmtE(wert)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost btn-sm",
+      style: {
+        minHeight: 28,
+        padding: '0 8px',
+        opacity: 0.6
+      },
+      onClick: () => {
+        if (!window.confirm('Archiveintrag löschen?')) return;
+        setData(d => ({
+          ...d,
+          archivBest: (d.archivBest || []).filter(x => x.id !== b.id)
+        }));
+        toast('Archiveintrag gelöscht', 'warn');
+      }
+    }, "\uD83D\uDDD1")));
   }))))));
 }
 
