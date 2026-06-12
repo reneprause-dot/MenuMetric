@@ -4414,10 +4414,20 @@ function App() {
   }, "Gro\xDFk\xFCche")), /*#__PURE__*/React.createElement("div", {
     className: "topbar-badges"
   }, mhdAlarm > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "topbar-badge red"
-  }, "\uD83D\uDEA8 ", mhdAlarm), unterMindest > 0 && /*#__PURE__*/React.createElement("div", {
-    className: "topbar-badge yellow"
-  }, "\uD83D\uDCE6 ", unterMindest)), /*#__PURE__*/React.createElement("div", {
+    className: "topbar-badge red",
+    title: mhdAlarm + ' Artikel laufen in ≤3 Tagen ab',
+    style: {
+      cursor: 'pointer'
+    },
+    onClick: () => setPage('lager')
+  }, "\uD83D\uDEA8 ", mhdAlarm, " MHD-Alarm"), unterMindest > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "topbar-badge yellow",
+    title: unterMindest + ' Artikel unter Mindestbestand',
+    style: {
+      cursor: 'pointer'
+    },
+    onClick: () => setPage('bestellungen')
+  }, "\uD83D\uDCE6 ", unterMindest, " Unterbestand")), /*#__PURE__*/React.createElement("div", {
     className: "topbar-time"
   }, /*#__PURE__*/React.createElement(Clock, null))), /*#__PURE__*/React.createElement("div", {
     className: "page-bar"
