@@ -403,7 +403,7 @@ const INIT = {
     menge: 22.5,
     mhd: "2025-07-15",
     charge: "CH-001",
-    lagerort: "Kühlraum A",
+    lagerortId: "LA1",
     ek: 14.50,
     eingang: "2025-06-08"
   }, {
@@ -412,7 +412,7 @@ const INIT = {
     menge: 4.0,
     mhd: "2025-06-14",
     charge: "CH-002",
-    lagerort: "Kühlraum B",
+    lagerortId: "LA2",
     ek: 18.90,
     eingang: "2025-06-10"
   }, {
@@ -421,7 +421,7 @@ const INIT = {
     menge: 2,
     mhd: "2025-06-18",
     charge: "CH-003",
-    lagerort: "Kühlraum A",
+    lagerortId: "LA2",
     ek: 22.00,
     eingang: "2025-06-09"
   }, {
@@ -430,7 +430,7 @@ const INIT = {
     menge: 36,
     mhd: "2027-12-31",
     charge: "CH-004",
-    lagerort: "Weinkeller",
+    lagerortId: "LA4",
     ek: 8.50,
     eingang: "2025-05-20"
   }, {
@@ -439,7 +439,7 @@ const INIT = {
     menge: 48,
     mhd: "2025-08-01",
     charge: "CH-005",
-    lagerort: "Kühlraum A",
+    lagerortId: "LA1",
     ek: 1.85,
     eingang: "2025-06-05"
   }, {
@@ -448,7 +448,7 @@ const INIT = {
     menge: 30,
     mhd: "2026-06-01",
     charge: "CH-006",
-    lagerort: "Trockenlager",
+    lagerortId: "LA5",
     ek: 0.95,
     eingang: "2025-05-28"
   }, {
@@ -457,7 +457,7 @@ const INIT = {
     menge: 18,
     mhd: "2026-09-30",
     charge: "CH-007",
-    lagerort: "Weinkeller",
+    lagerortId: "LA4",
     ek: 5.20,
     eingang: "2025-06-01"
   }, {
@@ -466,7 +466,7 @@ const INIT = {
     menge: 35,
     mhd: "2025-06-25",
     charge: "CH-008",
-    lagerort: "Kühlraum A",
+    lagerortId: "LA1",
     ek: 0.70,
     eingang: "2025-06-09"
   }],
@@ -897,6 +897,12 @@ const getLB = (lager, aId) => lager.filter(l => l.artikelId === aId).reduce((s, 
 const getA = (artikel, id) => artikel.find(a => a.id === id);
 const getL = (lieferanten, id) => lieferanten.find(l => l.id === id);
 const getLO = (lagerorte, id) => (lagerorte || []).find(l => l.id === id);
+// Gibt den Anzeigenamen eines Lagerorts zurück (ID-basiert, Fallback auf direkten String)
+const getLOName = (lagerorte, lagerortId, fallback = '—') => {
+  if (!lagerortId || lagerortId === 'unknown') return fallback || '—';
+  const lo = (lagerorte || []).find(l => l.id === lagerortId);
+  return lo ? lo.name : fallback || lagerortId;
+};
 const LO_TYPEN = [{
   id: 'kuehlraum',
   label: 'Kühlraum',
@@ -1359,9 +1365,10 @@ function Dashboard({
       }
     }, art?.name), /*#__PURE__*/React.createElement("td", {
       style: {
-        color: C.textMid
+        color: C.textMid,
+        fontSize: 12
       }
-    }, l.lagerort), /*#__PURE__*/React.createElement("td", {
+    }, getLOName(data.lagerorte || [], l.lagerortId, l.lagerort)), /*#__PURE__*/React.createElement("td", {
       className: "mono"
     }, fmt(l.menge, 1), " ", art?.einheit), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
       type: mhdBadge(days)
@@ -1391,6 +1398,7 @@ function Lager({
     lager,
     ausbuchungsLog = []
   } = data;
+  const lager_lagerorte = data.lagerorte || [];
   const [search, setSearch] = useState('');
   const [kat, setKat] = useState('Alle');
   const [statusFilter, setStatusFilter] = useState('Alle');
@@ -1444,6 +1452,7 @@ function Lager({
       ch,
       art
     } = ausbuchModal;
+    const loForLog = getLO(data.lagerorte || [], ch.lagerortId);
     const logEntry = {
       id: Date.now() + Math.random(),
       datum: todayStr(),
@@ -1452,7 +1461,8 @@ function Lager({
       artikelName: art.name,
       einheit: art.einheit,
       charge: ch.charge,
-      lagerort: ch.lagerort,
+      lagerortId: ch.lagerortId,
+      lagerort: loForLog?.name || ch.lagerort || '—',
       mhd: ch.mhd,
       menge: ch.menge,
       ekProStueck: ch.ek,
@@ -1666,11 +1676,20 @@ function Lager({
       className: "mono"
     }, fmtE(l.ek)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
       type: mhdBadge(days)
-    }, l.mhd, abgelaufen ? ' ⚠' : '')), /*#__PURE__*/React.createElement("td", {
-      style: {
-        color: C.textMid
-      }
-    }, l.lagerort), /*#__PURE__*/React.createElement("td", null, statusBadge(artStatus)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+    }, l.mhd, abgelaufen ? ' ⚠' : '')), /*#__PURE__*/React.createElement("td", null, (() => {
+      const lo = getLO(lager_lagerorte, l.lagerortId);
+      return lo ? /*#__PURE__*/React.createElement("span", {
+        className: `lo-typ-badge lo-typ-${lo.typ}`,
+        style: {
+          fontSize: 11
+        }
+      }, LO_TYPEN.find(t => t.id === lo.typ)?.icon, " ", lo.name) : /*#__PURE__*/React.createElement("span", {
+        style: {
+          color: C.textLight,
+          fontSize: 12
+        }
+      }, l.lagerortId === 'unknown' ? 'Unbekannt' : '—');
+    })()), /*#__PURE__*/React.createElement("td", null, statusBadge(artStatus)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
       className: "btn btn-danger btn-sm",
       style: {
         minHeight: 28,
@@ -1860,7 +1879,7 @@ function Wareneingang({
     menge: 1,
     ek: '',
     mhd: '',
-    lagerort: 'Kühlraum A'
+    lagerortId: ''
   });
   const [mhdErr, setMhdErr] = useState(false);
   const lagerorte = ['Kühlraum A', 'Kühlraum B', 'Weinkeller', 'Trockenlager', 'Tiefkühl'];
@@ -1891,7 +1910,7 @@ function Wareneingang({
       menge: 1,
       ek: '',
       mhd: '',
-      lagerort: 'Kühlraum A'
+      lagerortId: ''
     });
     setMhdErr(false);
   }
@@ -1900,12 +1919,13 @@ function Wareneingang({
   function uebernehmeBest(best) {
     const positionen = best.positionen.map(p => {
       const art = getA(artikel, p.artikelId);
+      const artObj = getA(artikel, p.artikelId);
       return {
         artikelId: String(p.artikelId),
         menge: p.menge,
         ek: p.ek || '',
         mhd: '',
-        lagerort: 'Kühlraum A',
+        lagerortId: artObj?.standardLagerortId || '',
         id: Date.now() + Math.random(),
         artName: p.artikelName || art?.name || '',
         artEinheit: p.einheit || art?.einheit || '',
@@ -1939,13 +1959,15 @@ function Wareneingang({
     }
     setMhdErr(false);
     const art = getA(artikel, Number(pos.artikelId));
+    const loForPos = getLO(data.lagerorte || [], pos.lagerortId);
     setForm(f => ({
       ...f,
       positionen: [...f.positionen, {
         ...pos,
         id: Date.now(),
         artName: art?.name,
-        artEinheit: art?.einheit
+        artEinheit: art?.einheit,
+        lagerortName: loForPos?.name || '—'
       }]
     }));
     setPos({
@@ -1998,13 +2020,15 @@ function Wareneingang({
     };
     const newLager = form.positionen.map(p => {
       const art = getA(artikel, Number(p.artikelId));
+      const loId = p.lagerortId || art?.standardLagerortId || '';
+      const lo = getLO(data.lagerorte || [], loId);
       return {
         id: Date.now() + Math.random(),
         artikelId: Number(p.artikelId),
         menge: Number(p.menge),
         ek: Number(p.ek) || art?.ek || 0,
         mhd: p.mhd,
-        lagerort: p.lagerort || 'Kühlraum A',
+        lagerortId: loId,
         charge: 'CH-' + Math.random().toString(36).slice(2, 7).toUpperCase(),
         eingang: todayStr()
       };
@@ -2352,7 +2376,19 @@ function Wareneingang({
       color: C.textMid,
       marginBottom: 8
     }
-  }, fmt(p.menge, 2), " ", p.artEinheit, p.gebindeLabel && /*#__PURE__*/React.createElement("span", null, " \xB7 ", p.gebindeLabel), p.pcmArtNr && /*#__PURE__*/React.createElement("span", null, " \xB7 PCM: ", p.pcmArtNr)), /*#__PURE__*/React.createElement("div", {
+  }, fmt(p.menge, 2), " ", p.artEinheit, p.gebindeLabel && /*#__PURE__*/React.createElement("span", null, " \xB7 ", p.gebindeLabel), p.pcmArtNr && /*#__PURE__*/React.createElement("span", null, " \xB7 PCM: ", p.pcmArtNr), (() => {
+    const lo = getLO(data.lagerorte || [], p.lagerortId);
+    return lo ? /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.blue,
+        fontWeight: 700
+      }
+    }, " \xB7 ", LO_TYPEN.find(t => t.id === lo.typ)?.icon, " ", lo.name) : /*#__PURE__*/React.createElement("span", {
+      style: {
+        color: C.red
+      }
+    }, " \xB7 \u26A0 Lagerort w\xE4hlen");
+  })()), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr',
@@ -2438,12 +2474,11 @@ function Wareneingang({
     onChange: e => {
       const art = getA(artikel, Number(e.target.value));
       const pcmEk = getBestEkFromPCM(Number(e.target.value));
-      const lo = getLO(data.lagerorte || [], art?.standardLagerortId);
       setPos(p => ({
         ...p,
         artikelId: e.target.value,
         ek: pcmEk ? pcmEk.toFixed(2) : art?.ek || '',
-        lagerort: lo?.name || p.lagerort
+        lagerortId: art?.standardLagerortId || p.lagerortId
       }));
     }
   }, /*#__PURE__*/React.createElement("option", {
@@ -2501,16 +2536,16 @@ function Wareneingang({
   }, /*#__PURE__*/React.createElement("label", {
     className: "form-label"
   }, "Lagerort"), /*#__PURE__*/React.createElement("select", {
-    value: pos.lagerort,
+    value: pos.lagerortId || '',
     onChange: e => setPos(p => ({
       ...p,
-      lagerort: e.target.value
+      lagerortId: e.target.value
     }))
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
   }, "\u2014 w\xE4hlen \u2014"), (data.lagerorte || []).map(lo => /*#__PURE__*/React.createElement("option", {
     key: lo.id,
-    value: lo.name
+    value: lo.id
   }, LO_TYPEN.find(t => t.id === lo.typ)?.icon, " ", lo.name, lo.temp ? ' (' + lo.temp + ')' : '')))), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary",
     onClick: addPos,
@@ -3129,13 +3164,14 @@ function Inventur({
             grund: 'Inventurkorrektur'
           });
         } else {
+          const invLO = getLO(d.lagerorte || [], d.artikel.find(x => x.id === a.id)?.standardLagerortId);
           newLager.push({
             id: Date.now() + Math.random(),
             artikelId: a.id,
             menge: a.diff,
             ek: a.ek,
             mhd: '2026-12-31',
-            lagerort: 'Inventurzugang',
+            lagerortId: invLO?.id || 'unknown',
             charge: `INV-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
             eingang: todayStr()
           });
@@ -3544,10 +3580,12 @@ function Stammdaten({
     lagerorte = []
   } = data;
   const [artModal, setArtModal] = useState(false);
+  const [editArt, setEditArt] = useState(null); // null=neu, obj=bearbeiten
   const [liefModal, setLiefModal] = useState(false);
+  const [editLief, setEditLief] = useState(null); // null=neu, obj=bearbeiten
   const [loModal, setLoModal] = useState(false);
-  const [editLO, setEditLO] = useState(null); // null=neu, obj=bearbeiten
-  const [artForm, setArtForm] = useState({
+  const [editLO, setEditLO] = useState(null);
+  const ARTFORM_EMPTY = {
     name: '',
     einheit: 'kg',
     kategorie: 'Fleisch',
@@ -3561,15 +3599,17 @@ function Stammdaten({
     eiweiss: '',
     fett: '',
     kh: ''
-  });
-  const [liefForm, setLiefForm] = useState({
+  };
+  const LIEF_EMPTY = {
     name: '',
     kuerzel: '',
     kontakt: '',
     telefon: '',
     email: '',
     zahlungsziel: 14
-  });
+  };
+  const [artForm, setArtForm] = useState(ARTFORM_EMPTY);
+  const [liefForm, setLiefForm] = useState(LIEF_EMPTY);
   const [loForm, setLoForm] = useState({
     name: '',
     typ: 'kuehlraum',
@@ -3577,6 +3617,60 @@ function Stammdaten({
     kapazitaet: '',
     bemerkung: ''
   });
+  function openNewArt() {
+    setEditArt(null);
+    setArtForm(ARTFORM_EMPTY);
+    setArtModal(true);
+  }
+  function openEditArt(a) {
+    setEditArt(a);
+    setArtForm({
+      name: a.name,
+      einheit: a.einheit,
+      kategorie: a.kategorie,
+      lieferantId: a.lieferantId ? String(a.lieferantId) : '',
+      standardLagerortId: a.standardLagerortId || '',
+      mindestbestand: a.mindestbestand,
+      ek: a.ek,
+      mwst: a.mwst,
+      allergene: a.allergene || [],
+      kcal: a.kcal || '',
+      eiweiss: a.eiweiss || '',
+      fett: a.fett || '',
+      kh: a.kh || ''
+    });
+    setArtModal(true);
+  }
+  function openNewLief() {
+    setEditLief(null);
+    setLiefForm(LIEF_EMPTY);
+    setLiefModal(true);
+  }
+  function openEditLief(l) {
+    setEditLief(l);
+    setLiefForm({
+      name: l.name,
+      kuerzel: l.kuerzel || '',
+      kontakt: l.kontakt || '',
+      telefon: l.telefon || '',
+      email: l.email || '',
+      zahlungsziel: l.zahlungsziel || 14
+    });
+    setLiefModal(true);
+  }
+  function deleteLief(l) {
+    const inUse = data.bestellungen.some(b => b.lieferantId === l.id) || data.wareneingaenge.some(w => w.lieferantId === l.id);
+    if (inUse) {
+      toast(`"${l.name}" hat aktive Bestellungen/Wareneingänge – kann nicht gelöscht werden`, 'warn');
+      return;
+    }
+    if (!window.confirm(`Lieferant "${l.name}" löschen?`)) return;
+    setData(d => ({
+      ...d,
+      lieferanten: d.lieferanten.filter(x => x.id !== l.id)
+    }));
+    toast(l.name + ' gelöscht', 'warn');
+  }
   const kategorien = ['Fleisch', 'Fisch', 'Gemüse', 'Obst', 'Molkerei', 'Wein', 'Getränke', 'Trocken', 'Gewürze', 'Sonstiges'];
   function saveLO() {
     if (!loForm.name.trim()) {
@@ -3646,8 +3740,7 @@ function Stammdaten({
       toast('Bitte EK-Preis eingeben', 'warn');
       return;
     }
-    const newArtikel = {
-      id: Date.now(),
+    const artData = {
       name: artForm.name.trim(),
       einheit: artForm.einheit,
       kategorie: artForm.kategorie,
@@ -3662,48 +3755,61 @@ function Stammdaten({
       fett: artForm.fett ? Number(artForm.fett) : null,
       kh: artForm.kh ? Number(artForm.kh) : null
     };
-    setData(d => ({
-      ...d,
-      artikel: [...d.artikel, newArtikel]
-    }));
+    if (editArt) {
+      // Bearbeiten: ID + artikelStatus erhalten
+      setData(d => ({
+        ...d,
+        artikel: d.artikel.map(a => a.id === editArt.id ? {
+          ...a,
+          ...artData
+        } : a)
+      }));
+      toast(artData.name + ' aktualisiert', 'success');
+    } else {
+      setData(d => ({
+        ...d,
+        artikel: [...d.artikel, {
+          ...artData,
+          id: Date.now()
+        }]
+      }));
+      toast(artData.name + ' angelegt', 'success');
+    }
     setArtModal(false);
-    setArtForm({
-      name: '',
-      einheit: 'kg',
-      kategorie: 'Fleisch',
-      lieferantId: '',
-      standardLagerortId: '',
-      mindestbestand: 5,
-      ek: '',
-      mwst: 7,
-      allergene: [],
-      kcal: '',
-      eiweiss: '',
-      fett: '',
-      kh: ''
-    });
-    toast(newArtikel.name + ' angelegt', 'success');
+    setEditArt(null);
+    setArtForm(ARTFORM_EMPTY);
   }
   function saveLief() {
-    if (!liefForm.name) return;
-    setData(d => ({
-      ...d,
-      lieferanten: [...d.lieferanten, {
-        ...liefForm,
-        id: Date.now(),
-        zahlungsziel: Number(liefForm.zahlungsziel)
-      }]
-    }));
-    toast(`${liefForm.name} angelegt`, 'success');
+    if (!liefForm.name.trim()) {
+      toast('Firmenname erforderlich', 'warn');
+      return;
+    }
+    const liefData = {
+      ...liefForm,
+      zahlungsziel: Number(liefForm.zahlungsziel)
+    };
+    if (editLief) {
+      setData(d => ({
+        ...d,
+        lieferanten: d.lieferanten.map(l => l.id === editLief.id ? {
+          ...l,
+          ...liefData
+        } : l)
+      }));
+      toast(liefData.name + ' aktualisiert', 'success');
+    } else {
+      setData(d => ({
+        ...d,
+        lieferanten: [...d.lieferanten, {
+          ...liefData,
+          id: Date.now()
+        }]
+      }));
+      toast(liefData.name + ' angelegt', 'success');
+    }
     setLiefModal(false);
-    setLiefForm({
-      name: '',
-      kuerzel: '',
-      kontakt: '',
-      telefon: '',
-      email: '',
-      zahlungsziel: 14
-    });
+    setEditLief(null);
+    setLiefForm(LIEF_EMPTY);
   }
   return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "tabs"
@@ -3722,7 +3828,7 @@ function Stammdaten({
       marginBottom: 14,
       width: '100%'
     },
-    onClick: () => setArtModal(true)
+    onClick: openNewArt
   }, "+ Artikel anlegen"), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
@@ -3769,8 +3875,24 @@ function Stammdaten({
         marginRight: 2
       }
     }, al.icon) : null;
-  })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+  })), /*#__PURE__*/React.createElement("td", {
+    style: {
+      display: 'flex',
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    style: {
+      minHeight: 28,
+      padding: '0 8px'
+    },
+    onClick: () => openEditArt(a)
+  }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-danger btn-sm",
+    style: {
+      minHeight: 28,
+      padding: '0 8px'
+    },
     onClick: () => {
       if (window.confirm(`"${a.name}" löschen?`)) {
         setData(d => ({
@@ -3786,14 +3908,14 @@ function Stammdaten({
       marginBottom: 14,
       width: '100%'
     },
-    onClick: () => setLiefModal(true)
+    onClick: openNewLief
   }, "+ Lieferant anlegen"), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Name"), /*#__PURE__*/React.createElement("th", null, "K\xFCrzel"), /*#__PURE__*/React.createElement("th", null, "Kontakt"), /*#__PURE__*/React.createElement("th", null, "E-Mail"), /*#__PURE__*/React.createElement("th", null, "Zahlungsziel"))), /*#__PURE__*/React.createElement("tbody", null, lieferanten.map(l => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Name"), /*#__PURE__*/React.createElement("th", null, "K\xFCrzel"), /*#__PURE__*/React.createElement("th", null, "Kontakt"), /*#__PURE__*/React.createElement("th", null, "Telefon"), /*#__PURE__*/React.createElement("th", null, "E-Mail"), /*#__PURE__*/React.createElement("th", null, "Zahlungsziel"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, lieferanten.map(l => /*#__PURE__*/React.createElement("tr", {
     key: l.id
   }, /*#__PURE__*/React.createElement("td", {
     style: {
@@ -3801,28 +3923,57 @@ function Stammdaten({
     }
   }, l.name), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
     type: "blue"
-  }, l.kuerzel)), /*#__PURE__*/React.createElement("td", {
+  }, l.kuerzel || '—')), /*#__PURE__*/React.createElement("td", {
     style: {
       color: C.textMid
     }
-  }, l.kontakt), /*#__PURE__*/React.createElement("td", {
+  }, l.kontakt || '—'), /*#__PURE__*/React.createElement("td", {
     style: {
       color: C.textMid
     }
-  }, l.email), /*#__PURE__*/React.createElement("td", {
+  }, l.telefon || '—'), /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: C.textMid
+    }
+  }, l.email || '—'), /*#__PURE__*/React.createElement("td", {
     className: "mono"
-  }, l.zahlungsziel, " Tage")))))))), artModal && /*#__PURE__*/React.createElement(Modal, {
-    title: "Artikel anlegen",
-    onClose: () => setArtModal(false),
+  }, l.zahlungsziel, " Tage"), /*#__PURE__*/React.createElement("td", {
+    style: {
+      display: 'flex',
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    style: {
+      minHeight: 28,
+      padding: '0 8px'
+    },
+    onClick: () => openEditLief(l)
+  }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger btn-sm",
+    style: {
+      minHeight: 28,
+      padding: '0 8px'
+    },
+    onClick: () => deleteLief(l)
+  }, "\uD83D\uDDD1"))))))))), artModal && /*#__PURE__*/React.createElement(Modal, {
+    title: editArt ? `✏️ ${editArt.name} bearbeiten` : 'Artikel anlegen',
+    onClose: () => {
+      setArtModal(false);
+      setEditArt(null);
+    },
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
       className: "btn btn-primary btn-xl",
       onClick: saveArt
-    }, "Speichern"), /*#__PURE__*/React.createElement("button", {
+    }, editArt ? 'Änderungen speichern' : 'Artikel anlegen'), /*#__PURE__*/React.createElement("button", {
       className: "btn btn-ghost",
       style: {
         width: '100%'
       },
-      onClick: () => setArtModal(false)
+      onClick: () => {
+        setArtModal(false);
+        setEditArt(null);
+      }
     }, "Abbrechen"))
   }, /*#__PURE__*/React.createElement("div", {
     className: "form-group"
@@ -4008,17 +4159,23 @@ function Stammdaten({
       kh: e.target.value
     }))
   })))), liefModal && /*#__PURE__*/React.createElement(Modal, {
-    title: "Lieferant anlegen",
-    onClose: () => setLiefModal(false),
+    title: editLief ? `✏️ ${editLief.name} bearbeiten` : 'Lieferant anlegen',
+    onClose: () => {
+      setLiefModal(false);
+      setEditLief(null);
+    },
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
       className: "btn btn-primary btn-xl",
       onClick: saveLief
-    }, "Speichern"), /*#__PURE__*/React.createElement("button", {
+    }, editLief ? 'Änderungen speichern' : 'Lieferant anlegen'), /*#__PURE__*/React.createElement("button", {
       className: "btn btn-ghost",
       style: {
         width: '100%'
       },
-      onClick: () => setLiefModal(false)
+      onClick: () => {
+        setLiefModal(false);
+        setEditLief(null);
+      }
     }, "Abbrechen"))
   }, /*#__PURE__*/React.createElement("div", {
     className: "form-group"
@@ -6036,7 +6193,7 @@ function App() {
       if (s) {
         const parsed = JSON.parse(s);
         // Archiv-Felder nachrüsten falls alte Datenbasis
-        return {
+        const base = {
           ...INIT,
           ...parsed,
           archivWE: parsed.archivWE || [],
@@ -6046,6 +6203,20 @@ function App() {
           ausbuchungsLog: parsed.ausbuchungsLog || [],
           lagerorte: parsed.lagerorte || INIT.lagerorte
         };
+        // Migration: Chargen ohne lagerortId anhand Name auf ID upgraden
+        const los = base.lagerorte || [];
+        base.lager = (base.lager || []).map(l => {
+          if (l.lagerortId) return l;
+          const match = los.find(lo => lo.name === l.lagerort);
+          return match ? {
+            ...l,
+            lagerortId: match.id
+          } : {
+            ...l,
+            lagerortId: 'unknown'
+          };
+        });
+        return base;
       }
       return INIT;
     } catch {
