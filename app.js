@@ -485,7 +485,9 @@ const INIT = {
   bestellungen: [],
   // Archiv: abgeschlossene Wareneingänge und Bestellungen
   archivWE: [],
-  archivBest: []
+  archivBest: [],
+  tagesabschluesse: [],
+  stornoProtokoll: []
 };
 
 // ── PCM KATALOG ───────────────────────────────────────────────────────────────
@@ -1483,6 +1485,7 @@ function Wareneingang({
     archivWE = [],
     archivBest = []
   } = data;
+  const [stornoWEObj, setStornoWEObj] = useState(null);
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
     lieferantId: '',
@@ -1764,14 +1767,28 @@ function Wareneingang({
       className: "mono"
     }, fmtE(wert)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
       type: "green"
-    }, we.status)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+    }, we.status)), /*#__PURE__*/React.createElement("td", {
+      style: {
+        display: 'flex',
+        gap: 4
+      }
+    }, we.status !== 'Storniert' && /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger btn-sm",
+      style: {
+        minHeight: 28,
+        padding: '0 8px'
+      },
+      onClick: () => setStornoWEObj(we)
+    }, "\uD83D\uDEAB Storno"), we.status === 'Storniert' && /*#__PURE__*/React.createElement("span", {
+      className: "storno-badge"
+    }, "\uD83D\uDEAB Storniert"), /*#__PURE__*/React.createElement("button", {
       className: "btn btn-ghost btn-sm",
       style: {
         minHeight: 28,
         padding: '0 8px'
       },
       onClick: () => {
-        if (!window.confirm('Wareneingang ' + we.belegnr + ' löschen? (Lagerbestände werden NICHT rückgebucht)')) return;
+        if (!window.confirm('Wareneingang ' + we.belegnr + ' löschen?')) return;
         setData(d => ({
           ...d,
           wareneingaenge: d.wareneingaenge.filter(x => x.id !== we.id)
@@ -1779,7 +1796,11 @@ function Wareneingang({
         toast('Wareneingang gelöscht', 'warn');
       }
     }, "\uD83D\uDDD1")));
-  }))))), (data.archivWE || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+  }))))), stornoWEObj && /*#__PURE__*/React.createElement(StornoModal, {
+    we: stornoWEObj,
+    onClose: () => setStornoWEObj(null),
+    onStorno: g => stornoWE(stornoWEObj, g, setData, toast)
+  }), (data.archivWE || []).length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card-head"
@@ -2405,7 +2426,33 @@ function Rezepturen({
       style: {
         color: margeP > 60 ? C.green : margeP > 40 ? C.yellow : C.red
       }
-    }, fmt(margeP, 1), "%"))));
+    }, fmt(margeP, 1), "%"))), (() => {
+      const allegSet = new Set(rez.zutaten.flatMap(z => getA(artikel, z.artikelId)?.allergene || []));
+      return allegSet.size > 0 ? /*#__PURE__*/React.createElement("div", {
+        style: {
+          marginTop: 8,
+          paddingTop: 8,
+          borderTop: `1px solid ${C.border}`
+        }
+      }, /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 10,
+          fontWeight: 800,
+          color: C.textMid,
+          textTransform: 'uppercase'
+        }
+      }, "Allergene: "), [...allegSet].map(id => {
+        const al = ALLERGENE_LIST.find(x => x.id === id);
+        return al ? /*#__PURE__*/React.createElement("span", {
+          key: id,
+          title: al.name,
+          style: {
+            fontSize: 13,
+            marginRight: 4
+          }
+        }, al.icon, " ", id) : null;
+      })) : null;
+    })());
   })), selected && !showNeu && /*#__PURE__*/React.createElement(Modal, {
     title: `Produktion: ${selected.name}`,
     onClose: () => {
@@ -3128,7 +3175,12 @@ function Stammdaten({
     lieferantId: '',
     mindestbestand: 5,
     ek: '',
-    mwst: 7
+    mwst: 7,
+    allergene: [],
+    kcal: '',
+    eiweiss: '',
+    fett: '',
+    kh: ''
   });
   const [liefForm, setLiefForm] = useState({
     name: '',
@@ -3170,7 +3222,12 @@ function Stammdaten({
       lieferantId: '',
       mindestbestand: 5,
       ek: '',
-      mwst: 7
+      mwst: 7,
+      allergene: [],
+      kcal: '',
+      eiweiss: '',
+      fett: '',
+      kh: ''
     });
     toast(newArtikel.name + ' angelegt', 'success');
   }
@@ -3216,7 +3273,7 @@ function Stammdaten({
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Kategorie"), /*#__PURE__*/React.createElement("th", null, "Einheit"), /*#__PURE__*/React.createElement("th", null, "EK"), /*#__PURE__*/React.createElement("th", null, "MwSt."), /*#__PURE__*/React.createElement("th", null, "Mindestbestand"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, artikel.map(a => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Kategorie"), /*#__PURE__*/React.createElement("th", null, "Einheit"), /*#__PURE__*/React.createElement("th", null, "EK"), /*#__PURE__*/React.createElement("th", null, "MwSt."), /*#__PURE__*/React.createElement("th", null, "Mindestbestand"), /*#__PURE__*/React.createElement("th", null, "Allergene"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, artikel.map(a => /*#__PURE__*/React.createElement("tr", {
     key: a.id
   }, /*#__PURE__*/React.createElement("td", {
     style: {
@@ -3236,7 +3293,17 @@ function Stammdaten({
     }
   }, a.mwst, "%"), /*#__PURE__*/React.createElement("td", {
     className: "mono"
-  }, a.mindestbestand, " ", a.einheit), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+  }, a.mindestbestand, " ", a.einheit), /*#__PURE__*/React.createElement("td", null, (a.allergene || []).map(id => {
+    const al = ALLERGENE_LIST.find(x => x.id === id);
+    return al ? /*#__PURE__*/React.createElement("span", {
+      key: id,
+      title: al.name,
+      style: {
+        fontSize: 12,
+        marginRight: 2
+      }
+    }, al.icon) : null;
+  })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-danger btn-sm",
     onClick: () => {
       if (window.confirm(`"${a.name}" löschen?`)) {
@@ -3386,6 +3453,78 @@ function Stammdaten({
     onChange: e => setArtForm(f => ({
       ...f,
       mindestbestand: e.target.value
+    }))
+  }))), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Allergene"), /*#__PURE__*/React.createElement(AllergenPicker, {
+    value: artForm.allergene || [],
+    onChange: v => setArtForm(f => ({
+      ...f,
+      allergene: v
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "divider"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.textMid,
+      marginBottom: 8
+    }
+  }, "N\xC4HRWERTE (pro 100g/100ml, optional)"), /*#__PURE__*/React.createElement("div", {
+    className: "nw-grid"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Kalorien (kcal)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    value: artForm.kcal || '',
+    onChange: e => setArtForm(f => ({
+      ...f,
+      kcal: e.target.value
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Eiwei\xDF (g)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    step: "0.1",
+    value: artForm.eiweiss || '',
+    onChange: e => setArtForm(f => ({
+      ...f,
+      eiweiss: e.target.value
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Fett (g)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    step: "0.1",
+    value: artForm.fett || '',
+    onChange: e => setArtForm(f => ({
+      ...f,
+      fett: e.target.value
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Kohlenhydrate (g)"), /*#__PURE__*/React.createElement("input", {
+    type: "number",
+    min: "0",
+    step: "0.1",
+    value: artForm.kh || '',
+    onChange: e => setArtForm(f => ({
+      ...f,
+      kh: e.target.value
     }))
   })))), liefModal && /*#__PURE__*/React.createElement(Modal, {
     title: "Lieferant anlegen",
@@ -4319,6 +4458,803 @@ function PCMModule({
   }));
 }
 
+// ════════════════════════════════════════════════════════════════════════════
+// ── NEUE FEATURES: Export, Storno, Tagesabschluss, Allergene, Backup ───────
+// ════════════════════════════════════════════════════════════════════════════
+
+// ── ALLERGENE & NÄHRWERT KONSTANTEN ─────────────────────────────────────────
+const ALLERGENE_LIST = [{
+  id: 'A',
+  name: 'Gluten',
+  icon: '🌾'
+}, {
+  id: 'B',
+  name: 'Krebstiere',
+  icon: '🦐'
+}, {
+  id: 'C',
+  name: 'Eier',
+  icon: '🥚'
+}, {
+  id: 'D',
+  name: 'Fisch',
+  icon: '🐟'
+}, {
+  id: 'E',
+  name: 'Erdnüsse',
+  icon: '🥜'
+}, {
+  id: 'F',
+  name: 'Soja',
+  icon: '🫘'
+}, {
+  id: 'G',
+  name: 'Milch/Laktose',
+  icon: '🥛'
+}, {
+  id: 'H',
+  name: 'Schalenfrüchte',
+  icon: '🌰'
+}, {
+  id: 'L',
+  name: 'Sellerie',
+  icon: '🥬'
+}, {
+  id: 'M',
+  name: 'Senf',
+  icon: '🟡'
+}, {
+  id: 'N',
+  name: 'Sesam',
+  icon: '⚪'
+}, {
+  id: 'O',
+  name: 'Schwefeldioxid',
+  icon: '⚗️'
+}, {
+  id: 'P',
+  name: 'Lupinen',
+  icon: '🌿'
+}, {
+  id: 'R',
+  name: 'Weichtiere',
+  icon: '🦑'
+}];
+
+// ── CSS ERGÄNZUNGEN ──────────────────────────────────────────────────────────
+const additionalCss = `
+  /* EXPORT / BACKUP */
+  .export-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px;}
+  .export-card{background:white;border:1.5px solid #E2E8F0;border-radius:16px;padding:18px;display:flex;flex-direction:column;gap:8px;cursor:pointer;transition:all 0.15s;}
+  .export-card:hover{border-color:#2563EB;box-shadow:0 4px 12px rgba(37,99,235,0.1);}
+  .export-card-icon{font-size:28px;}
+  .export-card-title{font-size:14px;font-weight:800;color:#0F172A;}
+  .export-card-sub{font-size:12px;color:#6B7280;font-weight:600;}
+
+  /* STORNO */
+  .storno-badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:800;background:#FEE2E2;color:#DC2626;border:1px solid #FECACA;}
+
+  /* TAGESABSCHLUSS */
+  .ta-row{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:14px;}
+  .ta-row:last-child{border-bottom:none;}
+  .ta-label{font-weight:700;color:#475569;}
+  .ta-value{font-family:'JetBrains Mono',monospace;font-weight:800;}
+
+  /* ALLERGENE CHIPS */
+  .allergen-chip{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:700;background:#FEF3C7;color:#92400E;border:1px solid #FDE68A;cursor:pointer;transition:all 0.1s;}
+  .allergen-chip.active{background:#DC2626;color:white;border-color:#DC2626;}
+  .allergen-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+
+  /* NAEHRWERTE */
+  .nw-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+  .nw-item{display:flex;flex-direction:column;gap:3px;}
+  .nw-label{font-size:10px;font-weight:800;color:#94A3B8;text-transform:uppercase;letter-spacing:0.5px;}
+  .nw-val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;color:#0F172A;}
+`;
+
+// ── EXPORT HELPERS ───────────────────────────────────────────────────────────
+function exportJSON(data) {
+  const blob = new Blob([JSON.stringify({
+    version: '1.0',
+    exportDatum: new Date().toISOString(),
+    system: 'MenuMetric',
+    ...data
+  }, null, 2)], {
+    type: 'application/json'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `menumetric-backup-${todayStr()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function exportCSV(data) {
+  const {
+    artikel,
+    lager,
+    verbrauch
+  } = data;
+  const rows = [['Artikel', 'Kategorie', 'Einheit', 'Bestand', 'MHD (nächste)', 'EK', 'Lagerwert']];
+  artikel.forEach(a => {
+    const best = [...lager].filter(l => l.artikelId === a.id).sort((x, y) => new Date(x.mhd) - new Date(y.mhd))[0];
+    const bestand = lager.filter(l => l.artikelId === a.id).reduce((s, l) => s + l.menge, 0);
+    rows.push([a.name, a.kategorie, a.einheit, bestand.toFixed(2), best?.mhd || '—', a.ek.toFixed(2), (bestand * a.ek).toFixed(2)]);
+  });
+  const csv = rows.map(r => r.map(v => `"${v}"`).join(';')).join('\n');
+  const blob = new Blob(['\uFEFF' + csv], {
+    type: 'text/csv;charset=utf-8'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `menumetric-lager-${todayStr()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function exportTagesprotokollHTML(data) {
+  const {
+    artikel,
+    lager,
+    verbrauch,
+    wareneingaenge
+  } = data;
+  const heute = todayStr();
+  const heuteVb = verbrauch.filter(v => v.datum === heute);
+  const heuteWE = wareneingaenge.filter(w => w.datum === heute);
+  const totalVbWert = heuteVb.reduce((s, v) => s + v.menge * (artikel.find(a => a.id === v.artikelId)?.ek || 0), 0);
+  const totalLW = lager.reduce((s, l) => s + l.menge * l.ek, 0);
+  const html = `<!DOCTYPE html>
+<html lang="de"><head><meta charset="UTF-8">
+<title>MenuMetric Tagesprotokoll ${heute}</title>
+<style>
+  body{font-family:Arial,sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#1a1a1a;}
+  h1{font-size:22px;border-bottom:2px solid #2563EB;padding-bottom:8px;color:#2563EB;}
+  h2{font-size:16px;margin-top:24px;color:#475569;border-bottom:1px solid #e2e8f0;padding-bottom:4px;}
+  table{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px;}
+  th{background:#f4f6f9;padding:8px 12px;text-align:left;font-size:11px;text-transform:uppercase;color:#6b7280;}
+  td{padding:8px 12px;border-bottom:1px solid #f0f0f0;}
+  .kpi{display:flex;gap:20px;margin:16px 0;}
+  .kpi-box{background:#f4f6f9;border-radius:8px;padding:12px 16px;flex:1;}
+  .kpi-val{font-size:20px;font-weight:700;color:#2563EB;}
+  .kpi-lbl{font-size:11px;color:#6b7280;text-transform:uppercase;margin-top:2px;}
+  .footer{margin-top:40px;font-size:11px;color:#94A3B8;border-top:1px solid #e2e8f0;padding-top:8px;}
+</style></head><body>
+<h1>📊 MenuMetric Tagesprotokoll</h1>
+<p>Datum: <strong>${heute}</strong> &nbsp;|&nbsp; Erstellt: ${new Date().toLocaleTimeString('de-DE')}</p>
+<div class="kpi">
+  <div class="kpi-box"><div class="kpi-val">${totalVbWert.toFixed(2).replace('.', ',')} €</div><div class="kpi-lbl">Wareneinsatz heute</div></div>
+  <div class="kpi-box"><div class="kpi-val">${heuteVb.length}</div><div class="kpi-lbl">Verbrauchsbuchungen</div></div>
+  <div class="kpi-box"><div class="kpi-val">${heuteWE.length}</div><div class="kpi-lbl">Wareneingänge</div></div>
+  <div class="kpi-box"><div class="kpi-val">${totalLW.toFixed(2).replace('.', ',')} €</div><div class="kpi-lbl">Lagerwert gesamt</div></div>
+</div>
+<h2>Verbrauch heute</h2>
+<table><thead><tr><th>Artikel</th><th>Menge</th><th>Einheit</th><th>Grund</th><th>Wert (€)</th></tr></thead><tbody>
+${heuteVb.map(v => {
+    const a = artikel.find(x => x.id === v.artikelId);
+    return `<tr><td>${a?.name || '?'}</td><td>${v.menge.toFixed(2)}</td><td>${a?.einheit || ''}</td><td>${v.grund}</td><td>${(v.menge * (a?.ek || 0)).toFixed(2)}</td></tr>`;
+  }).join('')}
+${heuteVb.length === 0 ? '<tr><td colspan="5" style="color:#94A3B8;text-align:center">Kein Verbrauch erfasst</td></tr>' : ''}
+</tbody></table>
+<h2>Wareneingänge heute</h2>
+<table><thead><tr><th>Beleg-Nr.</th><th>Lieferant</th><th>Positionen</th><th>Wert (€)</th></tr></thead><tbody>
+${heuteWE.map(w => {
+    const wert = w.positionen.reduce((s, p) => s + p.menge * p.ek, 0);
+    return `<tr><td>${w.belegnr}</td><td>${w.lieferantName || '—'}</td><td>${w.positionen.length}</td><td>${wert.toFixed(2)}</td></tr>`;
+  }).join('')}
+${heuteWE.length === 0 ? '<tr><td colspan="4" style="color:#94A3B8;text-align:center">Kein Wareneingang erfasst</td></tr>' : ''}
+</tbody></table>
+<h2>Lagerbestand Übersicht</h2>
+<table><thead><tr><th>Artikel</th><th>Bestand</th><th>Einheit</th><th>MHD (nächste)</th><th>Lagerwert</th></tr></thead><tbody>
+${artikel.map(a => {
+    const b = lager.filter(l => l.artikelId === a.id).reduce((s, l) => s + l.menge, 0);
+    const best = [...lager].filter(l => l.artikelId === a.id).sort((x, y) => new Date(x.mhd) - new Date(y.mhd))[0];
+    return `<tr><td>${a.name}</td><td>${b.toFixed(2)}</td><td>${a.einheit}</td><td>${best?.mhd || '—'}</td><td>${(b * a.ek).toFixed(2)} €</td></tr>`;
+  }).join('')}
+</tbody></table>
+<div class="footer">MenuMetric PWA – Großküchen-Warenwirtschaft | Erstellt am ${new Date().toLocaleDateString('de-DE')}</div>
+</body></html>`;
+  const blob = new Blob([html], {
+    type: 'text/html;charset=utf-8'
+  });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `tagesprotokoll-${heute}.html`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── BACKUP IMPORT ────────────────────────────────────────────────────────────
+function importBackup(file, setData, toast) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const parsed = JSON.parse(e.target.result);
+      if (!parsed.artikel || !parsed.lager) throw new Error('Ungültiges Format');
+      setData(d => ({
+        ...d,
+        ...parsed,
+        archivWE: parsed.archivWE || [],
+        archivBest: parsed.archivBest || []
+      }));
+      toast('Backup erfolgreich importiert', 'success');
+    } catch (err) {
+      toast('Fehler beim Import: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ── WE STORNO LOGIC ──────────────────────────────────────────────────────────
+function stornoWE(we, grund, setData, toast) {
+  setData(d => {
+    // FIFO-reverse: für jede Position die entsprechenden Lagerchargen suchen und abziehen
+    let newLager = [...d.lager];
+    const stornoVerbrauch = [];
+    we.positionen.forEach(pos => {
+      // Suche Lagerchargen die durch diesen WE entstanden sind (anhand eingang-Datum und charge-Muster)
+      // Da wir keine direkte charge→WE Verknüpfung haben, suchen wir nach Chargen die am WE-Tag eingegangen sind
+      const zugehoerig = newLager.filter(l => l.artikelId === pos.artikelId && l.eingang === we.datum && l.menge > 0);
+      let zuReduzieren = pos.menge;
+      zugehoerig.sort((a, b) => new Date(b.eingang) - new Date(a.eingang)).forEach(ch => {
+        if (zuReduzieren <= 0) return;
+        const abzug = Math.min(ch.menge, zuReduzieren);
+        newLager = newLager.map(l => l.id === ch.id ? {
+          ...l,
+          menge: l.menge - abzug
+        } : l);
+        zuReduzieren -= abzug;
+      });
+
+      // Falls noch Rest übrig: aus beliebigen Chargen abziehen (neueste zuerst)
+      if (zuReduzieren > 0) {
+        const andereChargen = newLager.filter(l => l.artikelId === pos.artikelId && l.menge > 0).sort((a, b) => new Date(b.eingang) - new Date(a.eingang));
+        andereChargen.forEach(ch => {
+          if (zuReduzieren <= 0) return;
+          const abzug = Math.min(ch.menge, zuReduzieren);
+          newLager = newLager.map(l => l.id === ch.id ? {
+            ...l,
+            menge: l.menge - abzug
+          } : l);
+          zuReduzieren -= abzug;
+        });
+      }
+      stornoVerbrauch.push({
+        id: Date.now() + Math.random(),
+        datum: todayStr(),
+        artikelId: pos.artikelId,
+        menge: pos.menge,
+        grund: `STORNO WE ${we.belegnr}: ${grund}`
+      });
+    });
+    newLager = newLager.filter(l => l.menge > 0);
+
+    // WE als storniert markieren
+    const stornoWE_obj = {
+      ...we,
+      status: 'Storniert',
+      stornoDatum: todayStr(),
+      stornoGrund: grund
+    };
+    return {
+      ...d,
+      lager: newLager,
+      verbrauch: [...d.verbrauch, ...stornoVerbrauch],
+      wareneingaenge: d.wareneingaenge.map(w => w.id === we.id ? stornoWE_obj : w)
+    };
+  });
+  toast(`Wareneingang ${we.belegnr} storniert – Lager korrigiert`, 'warn');
+}
+
+// ── EXPORT MODULE ────────────────────────────────────────────────────────────
+function ExportBackup({
+  data,
+  setData,
+  toast
+}) {
+  const [importMode, setImportMode] = useState(false);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("style", null, additionalCss), /*#__PURE__*/React.createElement("div", {
+    className: "sec-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-title"
+  }, "Export & Datensicherung"), /*#__PURE__*/React.createElement("div", {
+    className: "sec-sub"
+  }, "Daten sichern, exportieren und auf andere Ger\xE4te \xFCbertragen"))), /*#__PURE__*/React.createElement("div", {
+    className: "alert info"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\uD83D\uDCBE"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, "Alle Daten liegen lokal im Browser. Regelm\xE4\xDFige Backups sch\xFCtzen vor Datenverlust bei Browser-Reset oder Ger\xE4tewechsel.")), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.textMid,
+      textTransform: 'uppercase',
+      letterSpacing: '.5px',
+      marginBottom: 10
+    }
+  }, "Export"), /*#__PURE__*/React.createElement("div", {
+    className: "export-grid"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "export-card",
+    onClick: () => exportJSON(data)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "export-card-icon"
+  }, "\uD83D\uDCBE"), /*#__PURE__*/React.createElement("div", {
+    className: "export-card-title"
+  }, "JSON-Backup"), /*#__PURE__*/React.createElement("div", {
+    className: "export-card-sub"
+  }, "Vollst\xE4ndige Datensicherung \u2013 f\xFCr Import auf anderem Ger\xE4t")), /*#__PURE__*/React.createElement("div", {
+    className: "export-card",
+    onClick: () => exportCSV(data)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "export-card-icon"
+  }, "\uD83D\uDCCA"), /*#__PURE__*/React.createElement("div", {
+    className: "export-card-title"
+  }, "Lager als CSV"), /*#__PURE__*/React.createElement("div", {
+    className: "export-card-sub"
+  }, "Alle Best\xE4nde f\xFCr Excel / Buchhaltung")), /*#__PURE__*/React.createElement("div", {
+    className: "export-card",
+    onClick: () => exportTagesprotokollHTML(data)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "export-card-icon"
+  }, "\uD83D\uDCC4"), /*#__PURE__*/React.createElement("div", {
+    className: "export-card-title"
+  }, "Tagesprotokoll"), /*#__PURE__*/React.createElement("div", {
+    className: "export-card-sub"
+  }, "HTML-Bericht mit Verbrauch, WE und Lagerstand \u2013 druckfertig"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.textMid,
+      textTransform: 'uppercase',
+      letterSpacing: '.5px',
+      marginBottom: 10,
+      marginTop: 8
+    }
+  }, "Import / Restore"), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 20
+    }
+  }, !importMode ? /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 14,
+      color: C.textMid,
+      fontWeight: 600
+    }
+  }, "JSON-Backup laden und Daten wiederherstellen. Achtung: \xFCberschreibt alle aktuellen Daten!"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost btn-lg",
+    onClick: () => setImportMode(true)
+  }, "\uD83D\uDCC2 Backup laden\u2026")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "alert danger"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\u26A0"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, "Alle aktuellen Daten werden \xFCberschrieben. Vorher exportieren!")), /*#__PURE__*/React.createElement("input", {
+    type: "file",
+    accept: ".json",
+    style: {
+      background: C.bg,
+      border: `2px solid ${C.border}`,
+      borderRadius: 12,
+      padding: '12px 14px',
+      fontSize: 14,
+      fontFamily: 'Nunito',
+      minHeight: 'auto'
+    },
+    onChange: e => {
+      if (e.target.files[0]) importBackup(e.target.files[0], setData, toast);
+      setImportMode(false);
+    }
+  }), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: () => setImportMode(false)
+  }, "Abbrechen"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.textMid,
+      textTransform: 'uppercase',
+      letterSpacing: '.5px',
+      marginBottom: 10,
+      marginTop: 8
+    }
+  }, "Statistiken"), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "ta-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ta-label"
+  }, "Artikel im System"), /*#__PURE__*/React.createElement("span", {
+    className: "ta-value"
+  }, data.artikel.length)), /*#__PURE__*/React.createElement("div", {
+    className: "ta-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ta-label"
+  }, "Lager-Chargen"), /*#__PURE__*/React.createElement("span", {
+    className: "ta-value"
+  }, data.lager.length)), /*#__PURE__*/React.createElement("div", {
+    className: "ta-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ta-label"
+  }, "Wareneing\xE4nge"), /*#__PURE__*/React.createElement("span", {
+    className: "ta-value"
+  }, data.wareneingaenge.length)), /*#__PURE__*/React.createElement("div", {
+    className: "ta-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ta-label"
+  }, "Bestellungen (aktiv)"), /*#__PURE__*/React.createElement("span", {
+    className: "ta-value"
+  }, data.bestellungen.length)), /*#__PURE__*/React.createElement("div", {
+    className: "ta-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ta-label"
+  }, "Verbrauchsbuchungen"), /*#__PURE__*/React.createElement("span", {
+    className: "ta-value"
+  }, data.verbrauch.length)), /*#__PURE__*/React.createElement("div", {
+    className: "ta-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ta-label"
+  }, "Rezepturen"), /*#__PURE__*/React.createElement("span", {
+    className: "ta-value"
+  }, data.rezepturen.length)), /*#__PURE__*/React.createElement("div", {
+    className: "ta-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ta-label"
+  }, "Archiv Wareneing\xE4nge"), /*#__PURE__*/React.createElement("span", {
+    className: "ta-value"
+  }, (data.archivWE || []).length)), /*#__PURE__*/React.createElement("div", {
+    className: "ta-row"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "ta-label"
+  }, "Archiv Bestellungen"), /*#__PURE__*/React.createElement("span", {
+    className: "ta-value"
+  }, (data.archivBest || []).length))));
+}
+
+// ── TAGESABSCHLUSS MODULE ────────────────────────────────────────────────────
+function Tagesabschluss({
+  data,
+  setData,
+  toast
+}) {
+  const {
+    artikel,
+    lager,
+    verbrauch,
+    wareneingaenge,
+    tagesabschluesse = []
+  } = data;
+  const heute = todayStr();
+  const [notiz, setNotiz] = useState('');
+  const [abgeschlossen, setAbgeschlossen] = useState(false);
+  const heuteVb = verbrauch.filter(v => v.datum === heute);
+  const heuteWE = wareneingaenge.filter(w => w.datum === heute || w.gebuchtAm === heute);
+  const totalVbWert = heuteVb.reduce((s, v) => s + v.menge * (artikel.find(a => a.id === v.artikelId)?.ek || 0), 0);
+  const totalWEWert = heuteWE.reduce((s, w) => s + (w.gesamtwert || w.positionen.reduce((ss, p) => ss + p.menge * p.ek, 0)), 0);
+  const totalLW = lager.reduce((s, l) => s + l.menge * l.ek, 0);
+  const mhdKrit = lager.filter(l => daysDiff(l.mhd) <= 3 && daysDiff(l.mhd) >= 0).length;
+  const bereitsAbgeschlossen = tagesabschluesse.find(t => t.datum === heute);
+  function abschliessen() {
+    const abschluss = {
+      id: Date.now(),
+      datum: heute,
+      abschlusszeit: new Date().toLocaleTimeString('de-DE'),
+      verbrauchWert: totalVbWert,
+      wareneingangWert: totalWEWert,
+      lagerwert: totalLW,
+      verbrauchAnzahl: heuteVb.length,
+      wareneingangAnzahl: heuteWE.length,
+      mhdAlarme: mhdKrit,
+      notiz: notiz.trim()
+    };
+    setData(d => ({
+      ...d,
+      tagesabschluesse: [abschluss, ...(d.tagesabschluesse || [])]
+    }));
+    toast('Tagesabschluss für ' + heute + ' gespeichert', 'success');
+    setAbgeschlossen(true);
+    exportTagesprotokollHTML(data);
+  }
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("style", null, additionalCss), /*#__PURE__*/React.createElement("div", {
+    className: "sec-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-title"
+  }, "Tagesabschluss"), /*#__PURE__*/React.createElement("div", {
+    className: "sec-sub"
+  }, heute)), !bereitsAbgeschlossen && /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: abschliessen,
+    disabled: abgeschlossen
+  }, "\u2705 Abschluss buchen & exportieren")), bereitsAbgeschlossen && /*#__PURE__*/React.createElement("div", {
+    className: "alert success"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\u2705"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, "Tagesabschluss bereits gebucht um ", bereitsAbgeschlossen.abschlusszeit, " \u2013 ", bereitsAbgeschlossen.notiz || 'keine Notiz')), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-grid",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card blue"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83C\uDF7D"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, fmtE(totalVbWert)), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Wareneinsatz"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, heuteVb.length, " Buchungen")), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card green"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83D\uDE9A"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, fmtE(totalWEWert)), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Wareneing\xE4nge"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, heuteWE.length, " Belege")), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card blue"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83D\uDCB0"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, fmtE(totalLW)), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Lagerwert gesamt"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, "Aktuell")), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card red"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\u23F0"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, mhdKrit), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "MHD-Alarme"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, "\u22643 Tage"))), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDCCB Verbrauch heute")), heuteVb.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "empty-icon"
+  }, "\uD83C\uDF7D"), /*#__PURE__*/React.createElement("div", {
+    className: "empty-title"
+  }, "Kein Verbrauch erfasst")) : /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Menge"), /*#__PURE__*/React.createElement("th", null, "Grund"), /*#__PURE__*/React.createElement("th", null, "Wert"))), /*#__PURE__*/React.createElement("tbody", null, heuteVb.map(v => {
+    const a = artikel.find(x => x.id === v.artikelId);
+    return /*#__PURE__*/React.createElement("tr", {
+      key: v.id
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 700
+      }
+    }, a?.name), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, v.menge.toFixed(2), " ", a?.einheit), /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: C.textMid,
+        fontSize: 12
+      }
+    }, v.grund), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(v.menge * (a?.ek || 0))));
+  }), /*#__PURE__*/React.createElement("tr", {
+    style: {
+      background: C.bg
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    colSpan: 3,
+    style: {
+      fontWeight: 800,
+      textAlign: 'right',
+      paddingRight: 14
+    }
+  }, "Gesamt Wareneinsatz:"), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: C.blue,
+      fontWeight: 800
+    }
+  }, fmtE(totalVbWert))))))), !bereitsAbgeschlossen && /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Notiz zum Tagesabschluss (optional)"), /*#__PURE__*/React.createElement("textarea", {
+    value: notiz,
+    onChange: e => setNotiz(e.target.value),
+    rows: 3,
+    placeholder: "z.B. Lieferung Frischmarkt versp\xE4tet, Lachsbedarf h\xF6her als geplant\u2026",
+    style: {
+      minHeight: 'auto',
+      height: 80,
+      resize: 'vertical'
+    }
+  }))), tagesabschluesse.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDDC2 Letzte Tagesabschl\xFCsse")), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Zeit"), /*#__PURE__*/React.createElement("th", null, "Wareneinsatz"), /*#__PURE__*/React.createElement("th", null, "WE-Wert"), /*#__PURE__*/React.createElement("th", null, "Lagerwert"), /*#__PURE__*/React.createElement("th", null, "MHD-Alarme"))), /*#__PURE__*/React.createElement("tbody", null, tagesabschluesse.slice(0, 10).map(t => /*#__PURE__*/React.createElement("tr", {
+    key: t.id
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      fontWeight: 700
+    }
+  }, t.datum), /*#__PURE__*/React.createElement("td", {
+    style: {
+      color: C.textMid
+    }
+  }, t.abschlusszeit), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(t.verbrauchWert)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(t.wareneingangWert)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(t.lagerwert)), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: t.mhdAlarme > 0 ? C.red : C.green
+    }
+  }, t.mhdAlarme))))))));
+}
+
+// ── ALLERGENE IN ARTIKEL/REZEPTUR (Helpers für Stammdaten + Rezepturen) ───────
+function AllergenPicker({
+  value = [],
+  onChange
+}) {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "allergen-grid"
+  }, ALLERGENE_LIST.map(al => /*#__PURE__*/React.createElement("div", {
+    key: al.id,
+    className: `allergen-chip${value.includes(al.id) ? ' active' : ''}`,
+    onClick: () => onChange(value.includes(al.id) ? value.filter(x => x !== al.id) : [...value, al.id])
+  }, al.icon, " ", al.id, " \u2013 ", al.name))));
+}
+
+// ── WE STORNO IN DER WE-LISTE ────────────────────────────────────────────────
+function StornoModal({
+  we,
+  onClose,
+  onStorno
+}) {
+  const [grund, setGrund] = useState('');
+  const gruende = ['Falsche Menge gebucht', 'Ware noch nicht geliefert', 'Falsche Artikel', 'Doppelbuchung', 'Ware zurückgegeben', 'Sonstiges'];
+  const [custom, setCustom] = useState('');
+  function doStorno() {
+    const g = grund === 'Sonstiges' ? custom : grund;
+    if (!g) return;
+    onStorno(g);
+    onClose();
+  }
+  return /*#__PURE__*/React.createElement(Modal, {
+    title: `🚫 WE Stornieren: ${we.belegnr}`,
+    onClose: onClose,
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger btn-xl",
+      onClick: doStorno,
+      disabled: !grund || grund === 'Sonstiges' && !custom
+    }, "\uD83D\uDEAB Storno buchen \u2013 Lager wird korrigiert"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost",
+      style: {
+        width: '100%'
+      },
+      onClick: onClose
+    }, "Abbrechen"))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "alert danger"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\u26A0"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, /*#__PURE__*/React.createElement("strong", null, "Achtung:"), " Der Lagerbestand wird um die gebuchten Mengen reduziert.", /*#__PURE__*/React.createElement("br", null), "WE: ", we.belegnr, " \xB7 ", we.datum, " \xB7 ", we.positionen.length, " Positionen")), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Stornogrund"), gruende.map(g => /*#__PURE__*/React.createElement("div", {
+    key: g,
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      padding: '10px 14px',
+      borderRadius: 10,
+      background: grund === g ? C.blueLight : C.bg,
+      border: `1.5px solid ${grund === g ? C.blue : C.border}`,
+      marginBottom: 6,
+      cursor: 'pointer',
+      fontWeight: 700,
+      fontSize: 14
+    },
+    onClick: () => setGrund(g)
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      width: 16,
+      height: 16,
+      borderRadius: '50%',
+      border: `2px solid ${grund === g ? C.blue : C.borderMid}`,
+      background: grund === g ? C.blue : 'white',
+      flexShrink: 0
+    }
+  }), g)), grund === 'Sonstiges' && /*#__PURE__*/React.createElement("input", {
+    placeholder: "Bitte Grund eingeben\u2026",
+    value: custom,
+    onChange: e => setCustom(e.target.value),
+    style: {
+      marginTop: 8
+    }
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bg,
+      borderRadius: 12,
+      padding: '10px 14px',
+      border: `1px solid ${C.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      fontWeight: 800,
+      color: C.textMid,
+      marginBottom: 6,
+      textTransform: 'uppercase'
+    }
+  }, "Wird r\xFCckgebucht:"), we.positionen.map((p, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      fontSize: 13,
+      fontWeight: 600,
+      padding: '4px 0',
+      borderBottom: i < we.positionen.length - 1 ? `1px solid ${C.border}` : 'none'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, p.artikelName || `Artikel ${p.artikelId}`), /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.red,
+      fontFamily: 'JetBrains Mono'
+    }
+  }, "\u2212", p.menge.toFixed(2), " ", p.einheit || '')))));
+}
+
 // ── NAV + APP ─────────────────────────────────────────────────────────────────
 const PAGES = [{
   id: 'dashboard',
@@ -4352,6 +5288,14 @@ const PAGES = [{
   id: 'pcm',
   label: 'PCM',
   icon: '🔗'
+}, {
+  id: 'tagesabschluss',
+  label: 'Abschluss',
+  icon: '✅'
+}, {
+  id: 'export',
+  label: 'Export',
+  icon: '💾'
 }];
 function App() {
   const [data, setData] = useState(() => {
@@ -4364,7 +5308,9 @@ function App() {
           ...INIT,
           ...parsed,
           archivWE: parsed.archivWE || [],
-          archivBest: parsed.archivBest || []
+          archivBest: parsed.archivBest || [],
+          tagesabschluesse: parsed.tagesabschluesse || [],
+          stornoProtokoll: parsed.stornoProtokoll || []
         };
       }
       return INIT;
@@ -4386,7 +5332,9 @@ function App() {
         ...data,
         verbrauch: data.verbrauch.filter(v => v.datum >= cutoffStr),
         archivWE: (data.archivWE || []).slice(0, 200),
-        archivBest: (data.archivBest || []).slice(0, 200)
+        archivBest: (data.archivBest || []).slice(0, 200),
+        tagesabschluesse: (data.tagesabschluesse || []).slice(0, 365),
+        stornoProtokoll: (data.stornoProtokoll || []).slice(0, 500)
       };
       localStorage.setItem('menumetric-v1', JSON.stringify(trimmedData));
     } catch {}
@@ -4436,6 +5384,14 @@ function App() {
   }, currentPage?.icon, " ", currentPage?.label)), /*#__PURE__*/React.createElement("div", {
     className: "content"
   }, page === 'dashboard' && /*#__PURE__*/React.createElement(Dashboard, sp), page === 'lager' && /*#__PURE__*/React.createElement(Lager, sp), page === 'wareneingang' && /*#__PURE__*/React.createElement(Wareneingang, sp), page === 'rezepturen' && /*#__PURE__*/React.createElement(Rezepturen, sp), page === 'bestellungen' && /*#__PURE__*/React.createElement(Bestellungen, sp), page === 'inventur' && /*#__PURE__*/React.createElement(Inventur, sp), page === 'stammdaten' && /*#__PURE__*/React.createElement(Stammdaten, sp), page === 'pcm' && /*#__PURE__*/React.createElement(PCMModule, {
+    data: data,
+    setData: setData,
+    toast: addToast
+  }), page === 'tagesabschluss' && /*#__PURE__*/React.createElement(Tagesabschluss, {
+    data: data,
+    setData: setData,
+    toast: addToast
+  }), page === 'export' && /*#__PURE__*/React.createElement(ExportBackup, {
     data: data,
     setData: setData,
     toast: addToast
