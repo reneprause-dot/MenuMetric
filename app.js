@@ -482,7 +482,10 @@ const INIT = {
     menge: 1.44,
     grund: "Produktion: Pasta al Salmone"
   }],
-  bestellungen: []
+  bestellungen: [],
+  // Archiv: abgeschlossene Wareneingänge und Bestellungen
+  archivWE: [],
+  archivBest: []
 };
 
 // ── PCM KATALOG ───────────────────────────────────────────────────────────────
@@ -1476,7 +1479,9 @@ function Wareneingang({
     lieferanten,
     artikel,
     wareneingaenge,
-    bestellungen
+    bestellungen,
+    archivWE = [],
+    archivBest = []
   } = data;
   const [step, setStep] = useState(0);
   const [form, setForm] = useState({
@@ -1578,31 +1583,43 @@ function Wareneingang({
     toast(`${art?.name} hinzugefügt`, 'info');
   }
   function buchen() {
-    if (!form.lieferantId || !form.positionen.length) return;
+    if (!form.lieferantId || !form.positionen.length) {
+      toast('Lieferant und mind. 1 Position erforderlich', 'warn');
+      return;
+    }
+    // MHD-Pflichtprüfung
     const missingMhd = form.positionen.filter(p => !p.mhd);
     if (missingMhd.length > 0) {
-      toast(`${missingMhd.length} Position(en) ohne MHD`, 'warn');
+      toast(missingMhd.length + ' Position(en) ohne MHD – bitte eintragen', 'warn');
       return;
     }
+    // EK-Warnung (kein harter Block, nur Hinweis – PCM-Positionen können 0 haben)
     const missingEk = form.positionen.filter(p => !p.ek || Number(p.ek) <= 0);
     if (missingEk.length > 0) {
-      toast(`${missingEk.length} Position(en) ohne EK-Preis`, 'warn');
-      return;
+      // Weiche Warnung: User kann trotzdem buchen nach Bestätigung
+      const ok = window.confirm(missingEk.length + ' Position(en) ohne EK-Preis. Trotzdem buchen?');
+      if (!ok) return;
     }
-    const belegnr = form.belegnr || `WE-${Date.now().toString().slice(-5)}`;
+    const belegnr = form.belegnr || 'WE-' + Math.random().toString(36).slice(2, 7).toUpperCase();
+    const gebuchtePositionen = form.positionen.map(p => ({
+      artikelId: Number(p.artikelId),
+      artikelName: p.artName || '',
+      menge: Number(p.menge),
+      ek: Number(p.ek) || 0,
+      mhd: p.mhd,
+      lagerort: p.lagerort || 'Kühlraum A'
+    }));
     const we = {
       id: Date.now(),
       lieferantId: Number(form.lieferantId),
+      lieferantName: form.lieferantInfo?.name || getL(lieferanten, Number(form.lieferantId))?.name || '',
       datum: form.datum,
+      gebuchtAm: todayStr(),
       status: 'Gebucht',
       belegnr,
-      bestellungId: form.bestellungId,
-      positionen: form.positionen.map(p => ({
-        artikelId: Number(p.artikelId),
-        menge: Number(p.menge),
-        ek: Number(p.ek),
-        mhd: p.mhd
-      }))
+      bestellungId: form.bestellungId || null,
+      positionen: gebuchtePositionen,
+      gesamtwert: gebuchtePositionen.reduce((s, p) => s + p.menge * p.ek, 0)
     };
     const newLager = form.positionen.map(p => {
       const art = getA(artikel, Number(p.artikelId));
@@ -1612,19 +1629,29 @@ function Wareneingang({
         menge: Number(p.menge),
         ek: Number(p.ek) || art?.ek || 0,
         mhd: p.mhd,
-        lagerort: p.lagerort,
-        charge: `CH-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+        lagerort: p.lagerort || 'Kühlraum A',
+        charge: 'CH-' + Math.random().toString(36).slice(2, 7).toUpperCase(),
         eingang: todayStr()
       };
     });
     setData(d => {
-      // FIX-4: Bestellung auf Geliefert setzen
-      const newBest = form.bestellungId ? d.bestellungen.map(b => b.id === form.bestellungId ? {
-        ...b,
-        status: 'Geliefert',
-        lieferdatum: todayStr()
-      } : b) : d.bestellungen;
-      // FIX-2: Artikel-EK auf tatsächlich bezahlten Preis aktualisieren
+      // Bestellung auf Geliefert setzen + ins Archiv verschieben
+      let newBest = [...d.bestellungen];
+      let newArchivBest = [...(d.archivBest || [])];
+      if (form.bestellungId) {
+        const geliefert = d.bestellungen.find(b => b.id === form.bestellungId);
+        if (geliefert) {
+          const archiviert = {
+            ...geliefert,
+            status: 'Geliefert',
+            lieferdatum: todayStr(),
+            weNr: belegnr
+          };
+          newArchivBest = [archiviert, ...newArchivBest];
+          newBest = d.bestellungen.filter(b => b.id !== form.bestellungId);
+        }
+      }
+      // Artikel-EK aktualisieren
       const newArtikel = d.artikel.map(a => {
         const p = form.positionen.find(p => Number(p.artikelId) === a.id);
         return p && Number(p.ek) > 0 ? {
@@ -1632,15 +1659,19 @@ function Wareneingang({
           ek: Number(p.ek)
         } : a;
       });
+      // WE ins Archiv
+      const newArchivWE = [we, ...(d.archivWE || [])];
       return {
         ...d,
         wareneingaenge: [we, ...d.wareneingaenge],
         lager: [...d.lager, ...newLager],
         bestellungen: newBest,
+        archivBest: newArchivBest,
+        archivWE: newArchivWE,
         artikel: newArtikel
       };
     });
-    toast(`${belegnr} gebucht – Lager & EK-Preise aktualisiert`, 'success');
+    toast(belegnr + ' gebucht – Lager & Archiv aktualisiert', 'success');
     resetForm();
   }
   if (step === 0) return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
@@ -1656,7 +1687,7 @@ function Wareneingang({
     className: "card-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "card-title"
-  }, "\uD83D\uDCCB Warten auf Wareneingang"), /*#__PURE__*/React.createElement(Badge, {
+  }, "\uD83D\uDCCB Warten auf Eingang"), /*#__PURE__*/React.createElement(Badge, {
     type: "blue"
   }, offeneBest.length)), /*#__PURE__*/React.createElement("div", {
     className: "tbl-scroll"
@@ -1694,7 +1725,9 @@ function Wareneingang({
     className: "card-head"
   }, /*#__PURE__*/React.createElement("span", {
     className: "card-title"
-  }, "Letzte Wareneing\xE4nge")), wareneingaenge.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDE9A Wareneing\xE4nge"), /*#__PURE__*/React.createElement(Badge, {
+    type: "green"
+  }, wareneingaenge.length)), wareneingaenge.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "empty"
   }, /*#__PURE__*/React.createElement("div", {
     className: "empty-icon"
@@ -1706,7 +1739,7 @@ function Wareneingang({
     className: "tbl"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"), /*#__PURE__*/React.createElement("th", null, "Status"))), /*#__PURE__*/React.createElement("tbody", null, wareneingaenge.map(we => {
     const lief = getL(lieferanten, we.lieferantId);
-    const wert = we.positionen.reduce((s, p) => s + p.menge * p.ek, 0);
+    const wert = we.gesamtwert || we.positionen.reduce((s, p) => s + p.menge * p.ek, 0);
     return /*#__PURE__*/React.createElement("tr", {
       key: we.id
     }, /*#__PURE__*/React.createElement("td", {
@@ -1714,13 +1747,50 @@ function Wareneingang({
         fontWeight: 800,
         color: C.blue
       }
-    }, we.belegnr), /*#__PURE__*/React.createElement("td", null, we.datum), /*#__PURE__*/React.createElement("td", null, lief?.name), /*#__PURE__*/React.createElement("td", {
+    }, we.belegnr), /*#__PURE__*/React.createElement("td", null, we.datum), /*#__PURE__*/React.createElement("td", null, we.lieferantName || lief?.name || '—'), /*#__PURE__*/React.createElement("td", {
       className: "mono"
     }, we.positionen.length), /*#__PURE__*/React.createElement("td", {
       className: "mono"
     }, fmtE(wert)), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
       type: "green"
     }, we.status)));
+  }))))), (data.archivWE || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDDC2 Archiv Wareneing\xE4nge"), /*#__PURE__*/React.createElement(Badge, {
+    type: "gray"
+  }, (data.archivWE || []).length)), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"))), /*#__PURE__*/React.createElement("tbody", null, (data.archivWE || []).slice(0, 20).map(we => {
+    const wert = we.gesamtwert || we.positionen.reduce((s, p) => s + p.menge * p.ek, 0);
+    return /*#__PURE__*/React.createElement("tr", {
+      key: we.id,
+      style: {
+        opacity: 0.7
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 700,
+        color: C.textMid
+      }
+    }, we.belegnr), /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: C.textMid
+      }
+    }, we.datum), /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: C.textMid
+      }
+    }, we.lieferantName || '—'), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, we.positionen.length), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(wert)));
   }))))));
   if (step === 1) return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "steps"
@@ -2659,7 +2729,8 @@ function Bestellungen({
     artikel,
     lager,
     lieferanten,
-    bestellungen
+    bestellungen,
+    archivBest = []
   } = data;
   const vorschlaege = artikel.filter(a => getLB(lager, a.id) < a.mindestbestand).map(a => ({
     ...a,
@@ -2700,14 +2771,33 @@ function Bestellungen({
     toast(`${newBest.length} Bestellung(en) angelegt (PCM-optimiert)`, 'success');
   }
   function setStatus(id, status) {
-    setData(d => ({
-      ...d,
-      bestellungen: d.bestellungen.map(b => b.id === id ? {
-        ...b,
-        status
-      } : b)
-    }));
-    if (status === 'Bestellt') toast('Als bestellt markiert – erscheint im Wareneingang', 'info');
+    if (status === 'Geliefert') {
+      // Manuell auf Geliefert: ins Archiv verschieben
+      setData(d => {
+        const b = d.bestellungen.find(x => x.id === id);
+        if (!b) return d;
+        const archiviert = {
+          ...b,
+          status: 'Geliefert',
+          lieferdatum: todayStr()
+        };
+        return {
+          ...d,
+          bestellungen: d.bestellungen.filter(x => x.id !== id),
+          archivBest: [archiviert, ...(d.archivBest || [])]
+        };
+      });
+      toast('Bestellung als geliefert archiviert', 'success');
+    } else {
+      setData(d => ({
+        ...d,
+        bestellungen: d.bestellungen.map(b => b.id === id ? {
+          ...b,
+          status
+        } : b)
+      }));
+      if (status === 'Bestellt') toast('Als bestellt markiert – erscheint im Wareneingang', 'info');
+    }
   }
   const offen = bestellungen.filter(b => b.status === 'Offen');
   const bestellt = bestellungen.filter(b => b.status === 'Bestellt');
@@ -2817,7 +2907,50 @@ function Bestellungen({
       color: C.textMid,
       marginTop: 6
     }
-  }, "Bei Unterbestand erscheint hier ein Bestellvorschlag")));
+  }, "Bei Unterbestand erscheint hier ein Bestellvorschlag")), archivBest.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDDC2 Archiv Bestellungen"), /*#__PURE__*/React.createElement(Badge, {
+    type: "gray"
+  }, archivBest.length)), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Geliefert am"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null, "Wert"))), /*#__PURE__*/React.createElement("tbody", null, archivBest.slice(0, 20).map(b => {
+    const lief = getL(lieferanten, b.lieferantId);
+    const wert = b.positionen.reduce((s, p) => s + p.menge * p.ek, 0);
+    return /*#__PURE__*/React.createElement("tr", {
+      key: b.id,
+      style: {
+        opacity: 0.7
+      }
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 700,
+        color: C.textMid
+      }
+    }, b.belegnr), /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: C.textMid
+      }
+    }, b.datum), /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: C.textMid
+      }
+    }, b.lieferantName || lief?.name || '—'), /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: C.green,
+        fontWeight: 700
+      }
+    }, b.lieferdatum || '—'), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, b.positionen.length), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(wert)));
+  }))))));
 }
 
 // ── STAMMDATEN ────────────────────────────────────────────────────────────────
@@ -4069,7 +4202,17 @@ function App() {
   const [data, setData] = useState(() => {
     try {
       const s = localStorage.getItem('menumetric-v1');
-      return s ? JSON.parse(s) : INIT;
+      if (s) {
+        const parsed = JSON.parse(s);
+        // Archiv-Felder nachrüsten falls alte Datenbasis
+        return {
+          ...INIT,
+          ...parsed,
+          archivWE: parsed.archivWE || [],
+          archivBest: parsed.archivBest || []
+        };
+      }
+      return INIT;
     } catch {
       return INIT;
     }
@@ -4081,13 +4224,14 @@ function App() {
   } = useToast();
   useEffect(() => {
     try {
-      // Verbrauch: nur letzte 90 Tage speichern
       const cutoff = new Date();
       cutoff.setDate(cutoff.getDate() - 90);
       const cutoffStr = cutoff.toISOString().slice(0, 10);
       const trimmedData = {
         ...data,
-        verbrauch: data.verbrauch.filter(v => v.datum >= cutoffStr)
+        verbrauch: data.verbrauch.filter(v => v.datum >= cutoffStr),
+        archivWE: (data.archivWE || []).slice(0, 200),
+        archivBest: (data.archivBest || []).slice(0, 200)
       };
       localStorage.setItem('menumetric-v1', JSON.stringify(trimmedData));
     } catch {}
