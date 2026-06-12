@@ -39,18 +39,27 @@ const css = `
   .topbar-logo{font-size:19px;font-weight:900;letter-spacing:-0.3px;flex:1;}
   .topbar-logo .sub{font-size:13px;font-weight:600;opacity:0.75;margin-left:4px;}
   .topbar-badges{display:flex;gap:8px;}
-  .topbar-badge{display:flex;align-items:center;gap:5px;padding:6px 11px;border-radius:20px;font-size:12px;font-weight:800;}
-  .topbar-badge.red{background:rgba(220,38,38,0.2);color:#FCA5A5;border:1px solid rgba(220,38,38,0.3);}
-  .topbar-badge.yellow{background:rgba(217,119,6,0.2);color:#FDE68A;border:1px solid rgba(217,119,6,0.3);}
+  .topbar-badge{display:flex;align-items:center;gap:4px;padding:4px 9px;border-radius:20px;font-size:11px;font-weight:800;white-space:nowrap;line-height:1.2;}
+  .topbar-badge.red{background:rgba(220,38,38,0.25);color:#FCA5A5;border:1px solid rgba(220,38,38,0.4);}
+  .topbar-badge.yellow{background:rgba(217,119,6,0.25);color:#FDE68A;border:1px solid rgba(217,119,6,0.4);}
   .topbar-time{font-size:13px;font-weight:700;opacity:0.8;white-space:nowrap;}
   .page-bar{background:${C.bgBlue};border-bottom:1.5px solid ${C.border};padding:10px 16px;flex-shrink:0;position:sticky;top:60px;z-index:40;}
   .page-bar-inner{font-size:13px;font-weight:800;color:${C.blue};}
   .bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:20;background:white;border-top:1.5px solid ${C.border};display:flex;padding-bottom:env(safe-area-inset-bottom,0px);box-shadow:0 -4px 20px rgba(0,0,0,0.06);}
-  .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:10px 4px 8px;cursor:pointer;transition:color 0.15s;position:relative;color:${C.textLight};font-size:10px;font-weight:700;gap:3px;border:none;background:none;font-family:'Nunito',sans-serif;}
+  .bn-item{flex:1;display:flex;flex-direction:column;align-items:center;padding:8px 2px 7px;cursor:pointer;transition:color 0.15s;position:relative;color:${C.textLight};font-size:9px;font-weight:700;gap:2px;border:none;background:none;font-family:'Nunito',sans-serif;min-width:0;}
   .bn-item.active{color:${C.blue};}
-  .bn-icon{font-size:20px;line-height:1;}
-  .bn-item.active::after{content:'';position:absolute;top:0;left:20%;right:20%;height:3px;background:${C.blue};border-radius:0 0 3px 3px;}
-  .bn-badge{position:absolute;top:6px;right:calc(50% - 20px);background:${C.red};color:white;font-size:9px;font-weight:900;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid white;}
+  .bn-icon{font-size:22px;line-height:1;}
+  .bn-item.active::after{content:'';position:absolute;top:0;left:15%;right:15%;height:3px;background:${C.blue};border-radius:0 0 3px 3px;}
+  .bn-badge{position:absolute;top:4px;right:calc(50% - 18px);background:${C.red};color:white;font-size:9px;font-weight:900;min-width:16px;height:16px;border-radius:8px;display:flex;align-items:center;justify-content:center;padding:0 3px;border:2px solid white;}
+  /* Mehr-Drawer */
+  .mehr-overlay{position:fixed;inset:0;background:rgba(15,23,42,0.4);z-index:30;animation:fadeIn 0.15s ease;}
+  .mehr-drawer{position:fixed;bottom:0;left:0;right:0;z-index:31;background:white;border-radius:20px 20px 0 0;padding-bottom:env(safe-area-inset-bottom,12px);box-shadow:0 -8px 30px rgba(0,0,0,0.15);animation:slideUp 0.2s ease;}
+  .mehr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:0;padding:8px 0 4px;}
+  .mehr-item{display:flex;flex-direction:column;align-items:center;padding:14px 8px 12px;cursor:pointer;gap:6px;border:none;background:none;font-family:'Nunito',sans-serif;font-size:11px;font-weight:700;color:${C.text};transition:background 0.1s;border-radius:12px;margin:4px;}
+  .mehr-item:active{background:${C.bgBlue};}
+  .mehr-item.active{color:${C.blue};}
+  .mehr-item-icon{font-size:26px;line-height:1;}
+  .mehr-handle{width:36px;height:4px;background:${C.border};border-radius:2px;margin:10px auto 4px;}
   .content{flex:1;padding:16px;padding-bottom:calc(80px + env(safe-area-inset-bottom,0px));}
   .sec-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;gap:10px;}
   .sec-title{font-size:20px;font-weight:900;color:${C.text};}
@@ -6020,6 +6029,7 @@ const PAGES = [{
   icon: '💾'
 }];
 function App() {
+  const [showMehr, setShowMehr] = useState(false);
   const [data, setData] = useState(() => {
     try {
       const s = localStorage.getItem('menumetric-v1');
@@ -6088,19 +6098,19 @@ function App() {
     className: "topbar-badges"
   }, mhdAlarm > 0 && /*#__PURE__*/React.createElement("div", {
     className: "topbar-badge red",
-    title: mhdAlarm + ' Artikel laufen in ≤3 Tagen ab',
+    title: mhdAlarm + ' Artikel laufen in ≤3 Tagen ab – Lager prüfen',
     style: {
       cursor: 'pointer'
     },
     onClick: () => setPage('lager')
-  }, "\uD83D\uDEA8 ", mhdAlarm, " MHD-Alarm"), unterMindest > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDEA8 ", mhdAlarm), unterMindest > 0 && /*#__PURE__*/React.createElement("div", {
     className: "topbar-badge yellow",
-    title: unterMindest + ' Artikel unter Mindestbestand',
+    title: unterMindest + ' Artikel unter Mindestbestand – Bestellen',
     style: {
       cursor: 'pointer'
     },
     onClick: () => setPage('bestellungen')
-  }, "\uD83D\uDCE6 ", unterMindest, " Unterbestand")), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDCE6 ", unterMindest)), /*#__PURE__*/React.createElement("div", {
     className: "topbar-time"
   }, /*#__PURE__*/React.createElement(Clock, null))), /*#__PURE__*/React.createElement("div", {
     className: "page-bar"
@@ -6120,21 +6130,106 @@ function App() {
     data: data,
     setData: setData,
     toast: addToast
-  })), /*#__PURE__*/React.createElement("nav", {
+  })), showMehr && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "mehr-overlay",
+    onClick: () => setShowMehr(false)
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "mehr-drawer"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "mehr-handle"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '4px 16px 0',
+      fontWeight: 800,
+      fontSize: 12,
+      color: C.textMid,
+      textTransform: 'uppercase',
+      letterSpacing: '.5px'
+    }
+  }, "Navigation"), /*#__PURE__*/React.createElement("div", {
+    className: "mehr-grid"
+  }, [{
+    id: 'bestellungen',
+    label: 'Bestellen',
+    icon: '📋'
+  }, {
+    id: 'inventur',
+    label: 'Inventur',
+    icon: '🔢'
+  }, {
+    id: 'stammdaten',
+    label: 'Stammdaten',
+    icon: '🗂'
+  }, {
+    id: 'pcm',
+    label: 'PCM',
+    icon: '🔗'
+  }, {
+    id: 'tagesabschluss',
+    label: 'Abschluss',
+    icon: '✅'
+  }, {
+    id: 'export',
+    label: 'Export',
+    icon: '💾'
+  }].map(p => /*#__PURE__*/React.createElement("button", {
+    key: p.id,
+    className: `mehr-item${page === p.id ? ' active' : ''}`,
+    onClick: () => {
+      setPage(p.id);
+      setShowMehr(false);
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mehr-item-icon"
+  }, p.icon), p.id === 'bestellungen' && (unterMindest > 0 || offeneBest > 0) && /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      background: C.orange,
+      color: 'white',
+      borderRadius: 10,
+      padding: '1px 6px',
+      fontWeight: 800,
+      marginTop: -4
+    }
+  }, offeneBest || unterMindest), p.label))))), /*#__PURE__*/React.createElement("nav", {
     className: "bottom-nav"
-  }, PAGES.map(p => /*#__PURE__*/React.createElement("button", {
+  }, [{
+    id: 'dashboard',
+    label: 'Übersicht',
+    icon: '🏠'
+  }, {
+    id: 'lager',
+    label: 'Lager',
+    icon: '📦'
+  }, {
+    id: 'wareneingang',
+    label: 'Eingang',
+    icon: '🚚'
+  }, {
+    id: 'rezepturen',
+    label: 'Produktion',
+    icon: '👨‍🍳'
+  }].map(p => /*#__PURE__*/React.createElement("button", {
     key: p.id,
     className: `bn-item${page === p.id ? ' active' : ''}`,
-    onClick: () => setPage(p.id)
+    onClick: () => {
+      setPage(p.id);
+      setShowMehr(false);
+    }
   }, p.id === 'lager' && mhdAlarm > 0 && /*#__PURE__*/React.createElement("span", {
     className: "bn-badge"
-  }, mhdAlarm), p.id === 'bestellungen' && (unterMindest > 0 || offeneBest > 0) && /*#__PURE__*/React.createElement("span", {
+  }, mhdAlarm), /*#__PURE__*/React.createElement("span", {
+    className: "bn-icon"
+  }, p.icon), p.label)), /*#__PURE__*/React.createElement("button", {
+    className: `bn-item${['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'export'].includes(page) ? ' active' : ''}`,
+    onClick: () => setShowMehr(m => !m)
+  }, (unterMindest > 0 || offeneBest > 0) && !['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'export'].includes(page) && /*#__PURE__*/React.createElement("span", {
     className: "bn-badge",
     style: {
-      background: offeneBest > 0 ? C.blue : C.orange
+      background: C.orange
     }
   }, offeneBest || unterMindest), /*#__PURE__*/React.createElement("span", {
     className: "bn-icon"
-  }, p.icon), p.label)))));
+  }, showMehr ? '✕' : '☰'), ['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'export'].includes(page) ? PAGES.find(p => p.id === page)?.label || 'Mehr' : 'Mehr'))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
