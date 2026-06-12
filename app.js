@@ -1575,6 +1575,11 @@ function Wareneingang({
       toast(`${missingMhd.length} Position(en) ohne MHD`, 'warn');
       return;
     }
+    const missingEk = form.positionen.filter(p => !p.ek || Number(p.ek) <= 0);
+    if (missingEk.length > 0) {
+      toast(`${missingEk.length} Position(en) ohne EK-Preis`, 'warn');
+      return;
+    }
     const belegnr = form.belegnr || `WE-${Date.now().toString().slice(-5)}`;
     const we = {
       id: Date.now(),
@@ -1599,7 +1604,7 @@ function Wareneingang({
         ek: Number(p.ek) || art?.ek || 0,
         mhd: p.mhd,
         lagerort: p.lagerort,
-        charge: `CH-${Date.now().toString().slice(-4)}`,
+        charge: `CH-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
         eingang: todayStr()
       };
     });
@@ -1986,6 +1991,13 @@ function Rezepturen({
   const kategorien = ['Vorspeise', 'Hauptgericht', 'Beilage', 'Dessert', 'Getränk', 'Buffet'];
   function produzieren() {
     if (!selected) return;
+    // Prüfe ob alle Zutaten verfügbar sind
+    const fehlend = selected.zutaten.filter(z => getLB(lager, z.artikelId) < z.menge * portionen);
+    if (fehlend.length > 0) {
+      const namen = fehlend.map(z => getA(artikel, z.artikelId)?.name || '?').join(', ');
+      toast('Nicht genug Bestand: ' + namen, 'error');
+      return;
+    }
     const changes = {};
     for (const z of selected.zutaten) {
       let needed = z.menge * portionen;
@@ -2517,8 +2529,8 @@ function Inventur({
             menge: a.diff,
             ek: a.ek,
             mhd: '2026-12-31',
-            lagerort: 'Unbekannt',
-            charge: `INV-${todayStr()}`,
+            lagerort: 'Inventurzugang',
+            charge: `INV-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
             eingang: todayStr()
           });
         }
@@ -2820,19 +2832,28 @@ function Stammdaten({
   });
   const kategorien = ['Fleisch', 'Fisch', 'Gemüse', 'Obst', 'Molkerei', 'Wein', 'Getränke', 'Trocken', 'Gewürze', 'Sonstiges'];
   function saveArt() {
-    if (!artForm.name) return;
+    if (!artForm.name.trim()) {
+      toast('Bitte Artikelbezeichnung eingeben', 'warn');
+      return;
+    }
+    if (!artForm.ek || Number(artForm.ek) <= 0) {
+      toast('Bitte EK-Preis eingeben', 'warn');
+      return;
+    }
+    const newArtikel = {
+      id: Date.now(),
+      name: artForm.name.trim(),
+      einheit: artForm.einheit,
+      kategorie: artForm.kategorie,
+      lieferantId: artForm.lieferantId ? Number(artForm.lieferantId) : null,
+      mindestbestand: Number(artForm.mindestbestand) || 0,
+      ek: Number(artForm.ek),
+      mwst: Number(artForm.mwst)
+    };
     setData(d => ({
       ...d,
-      artikel: [...d.artikel, {
-        ...artForm,
-        id: Date.now(),
-        lieferantId: Number(artForm.lieferantId),
-        mindestbestand: Number(artForm.mindestbestand),
-        ek: Number(artForm.ek),
-        mwst: Number(artForm.mwst)
-      }]
+      artikel: [...d.artikel, newArtikel]
     }));
-    toast(`${artForm.name} angelegt`, 'success');
     setArtModal(false);
     setArtForm({
       name: '',
@@ -2843,6 +2864,7 @@ function Stammdaten({
       ek: '',
       mwst: 7
     });
+    toast(newArtikel.name + ' angelegt', 'success');
   }
   function saveLief() {
     if (!liefForm.name) return;
@@ -2886,7 +2908,7 @@ function Stammdaten({
     className: "tbl-scroll"
   }, /*#__PURE__*/React.createElement("table", {
     className: "tbl"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Kategorie"), /*#__PURE__*/React.createElement("th", null, "Einheit"), /*#__PURE__*/React.createElement("th", null, "EK"), /*#__PURE__*/React.createElement("th", null, "MwSt."), /*#__PURE__*/React.createElement("th", null, "Mindestbestand"))), /*#__PURE__*/React.createElement("tbody", null, artikel.map(a => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Artikel"), /*#__PURE__*/React.createElement("th", null, "Kategorie"), /*#__PURE__*/React.createElement("th", null, "Einheit"), /*#__PURE__*/React.createElement("th", null, "EK"), /*#__PURE__*/React.createElement("th", null, "MwSt."), /*#__PURE__*/React.createElement("th", null, "Mindestbestand"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, artikel.map(a => /*#__PURE__*/React.createElement("tr", {
     key: a.id
   }, /*#__PURE__*/React.createElement("td", {
     style: {
@@ -2906,7 +2928,18 @@ function Stammdaten({
     }
   }, a.mwst, "%"), /*#__PURE__*/React.createElement("td", {
     className: "mono"
-  }, a.mindestbestand, " ", a.einheit)))))))), tab === 'lieferanten' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+  }, a.mindestbestand, " ", a.einheit), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger btn-sm",
+    onClick: () => {
+      if (window.confirm(`"${a.name}" löschen?`)) {
+        setData(d => ({
+          ...d,
+          artikel: d.artikel.filter(x => x.id !== a.id)
+        }));
+        toast(a.name + ' gelöscht', 'warn');
+      }
+    }
+  }, "\uD83D\uDDD1"))))))))), tab === 'lieferanten' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary btn-lg",
     style: {
       marginBottom: 14,
@@ -3829,7 +3862,15 @@ function App() {
   } = useToast();
   useEffect(() => {
     try {
-      localStorage.setItem('menumetric-v1', JSON.stringify(data));
+      // Verbrauch: nur letzte 90 Tage speichern
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 90);
+      const cutoffStr = cutoff.toISOString().slice(0, 10);
+      const trimmedData = {
+        ...data,
+        verbrauch: data.verbrauch.filter(v => v.datum >= cutoffStr)
+      };
+      localStorage.setItem('menumetric-v1', JSON.stringify(trimmedData));
     } catch {}
   }, [data]);
   const unterMindest = data.artikel.filter(a => getLB(data.lager, a.id) < a.mindestbestand).length;
