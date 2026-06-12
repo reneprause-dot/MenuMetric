@@ -239,6 +239,12 @@ const css = `
   /* Ausbuchen-Log */
   .log-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;}
   .log-row:last-child{border-bottom:none;}
+  /* HACCP / Chargenrückverfolgung */
+  .haccp-card{background:white;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px;margin-bottom:10px;}
+  .haccp-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .haccp-chargelist{display:flex;flex-direction:column;gap:4px;margin-top:8px;}
+  .haccp-charge-row{display:flex;align-items:center;gap:8px;padding:6px 10px;background:#F8FAFC;border-radius:8px;border:1px solid #E2E8F0;font-size:12px;}
+  .haccp-charge-dot{width:8px;height:8px;border-radius:50%;background:#2563EB;flex-shrink:0;}
   /* Lagerorte */
   .lo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px;margin-bottom:16px;}
   .lo-card{background:white;border:1.5px solid #E2E8F0;border-radius:16px;padding:16px;position:relative;}
@@ -565,7 +571,8 @@ const INIT = {
   archivBest: [],
   tagesabschluesse: [],
   stornoProtokoll: [],
-  ausbuchungsLog: []
+  ausbuchungsLog: [],
+  produktionsLog: []
 };
 
 // ── PCM KATALOG ───────────────────────────────────────────────────────────────
@@ -2580,8 +2587,11 @@ function Rezepturen({
   const {
     rezepturen,
     artikel,
-    lager
+    lager,
+    produktionsLog = [],
+    lagerorte = []
   } = data;
+  const [showLog, setShowLog] = useState(false);
   const [selected, setSelected] = useState(null);
   const [portionen, setPortionen] = useState(1);
   const [showNeu, setShowNeu] = useState(false);
@@ -2611,6 +2621,8 @@ function Rezepturen({
       return;
     }
     const changes = {};
+    // HACCP: verwendete Chargen mit Mengen protokollieren
+    const verwendeteChargen = [];
     for (const z of selected.zutaten) {
       let needed = z.menge * portionen;
       const chargen = freieChargen(z.artikelId);
@@ -2618,25 +2630,52 @@ function Rezepturen({
         if (needed <= 0) break;
         const take = Math.min(ch.menge, needed);
         changes[ch.id] = (changes[ch.id] !== undefined ? changes[ch.id] : ch.menge) - take;
+        // Chargendetail für Log
+        verwendeteChargen.push({
+          artikelId: z.artikelId,
+          artikelName: getA(artikel, z.artikelId)?.name || '?',
+          chargeId: ch.id,
+          chargeNr: ch.charge,
+          mhd: ch.mhd,
+          menge: take,
+          einheit: getA(artikel, z.artikelId)?.einheit || '',
+          ek: ch.ek,
+          lagerortId: ch.lagerortId
+        });
         needed -= take;
       }
     }
+    const produktionsId = 'PROD-' + Math.random().toString(36).slice(2, 7).toUpperCase();
     const newVerbrauch = selected.zutaten.map(z => ({
       id: Date.now() + Math.random(),
       datum: todayStr(),
       artikelId: z.artikelId,
       menge: z.menge * portionen,
-      grund: `Produktion: ${selected.name} (${portionen} Port.)`
+      grund: `Produktion: ${selected.name} (${portionen} Port.)`,
+      produktionsId
     }));
+    // HACCP-Produktionslog Eintrag
+    const logEintrag = {
+      id: Date.now(),
+      produktionsId,
+      datum: todayStr(),
+      uhrzeit: new Date().toLocaleTimeString('de-DE'),
+      rezepturId: selected.id,
+      rezepturName: selected.name,
+      portionen,
+      wareneinsatz: verwendeteChargen.reduce((s, c) => s + c.menge * c.ek, 0),
+      chargen: verwendeteChargen
+    };
     setData(d => ({
       ...d,
       lager: d.lager.map(l => changes[l.id] !== undefined ? {
         ...l,
         menge: changes[l.id]
       } : l).filter(l => l.menge > 0),
-      verbrauch: [...d.verbrauch, ...newVerbrauch]
+      verbrauch: [...d.verbrauch, ...newVerbrauch],
+      produktionsLog: [logEintrag, ...(d.produktionsLog || [])]
     }));
-    toast(`${portionen} Port. "${selected.name}" produziert`, 'success');
+    toast(`${portionen} Port. "${selected.name}" produziert – HACCP-Log erstellt`, 'success');
     setSelected(null);
     setPortionen(1);
   }
@@ -2708,14 +2747,25 @@ function Rezepturen({
     }));
     toast('Rezeptur gelöscht', 'warn');
   }
-  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 10,
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary btn-lg",
     style: {
-      width: '100%',
-      marginBottom: 16
+      flex: 1
     },
     onClick: () => openNeu()
-  }, "+ Neue Rezeptur"), /*#__PURE__*/React.createElement("div", {
+  }, "+ Neue Rezeptur"), /*#__PURE__*/React.createElement("button", {
+    className: `btn btn-lg ${showLog ? 'btn-primary' : 'btn-ghost'}`,
+    onClick: () => setShowLog(l => !l),
+    style: {
+      flexShrink: 0
+    }
+  }, "\uD83D\uDD0D HACCP-Log ", produktionsLog.length > 0 && `(${produktionsLog.length})`)), /*#__PURE__*/React.createElement("div", {
     className: "rez-grid"
   }, rezepturen.map(rez => {
     const kosten = getRezKosten(rez, artikel, lager);
@@ -2864,7 +2914,113 @@ function Rezepturen({
         }, al.icon, " ", id) : null;
       })) : null;
     })());
-  })), selected && !showNeu && /*#__PURE__*/React.createElement(Modal, {
+  })), showLog && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDD0D HACCP Chargenr\xFCckverfolgung"), /*#__PURE__*/React.createElement(Badge, {
+    type: "gray"
+  }, produktionsLog.length, " Eintr\xE4ge")), produktionsLog.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "empty-icon"
+  }, "\uD83D\uDD0D"), /*#__PURE__*/React.createElement("div", {
+    className: "empty-title"
+  }, "Noch keine Produktionen protokolliert"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: C.textMid,
+      fontSize: 13,
+      marginTop: 4
+    }
+  }, "Ab der n\xE4chsten Produktion wird hier jede verwendete Charge dokumentiert")) : /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '0 0 8px'
+    }
+  }, produktionsLog.slice(0, 20).map(log => /*#__PURE__*/React.createElement("div", {
+    key: log.id,
+    className: "haccp-card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "haccp-card-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 15
+    }
+  }, log.rezepturName), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.textMid,
+      fontWeight: 600,
+      marginTop: 2
+    }
+  }, log.datum, " \xB7 ", log.uhrzeit, " \xB7 ", log.portionen, " Portion", log.portionen !== 1 ? 'en' : '', " \xB7 ", fmtE(log.wareneinsatz))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'flex-end',
+      gap: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: C.textLight,
+      fontFamily: 'JetBrains Mono'
+    }
+  }, log.produktionsId), /*#__PURE__*/React.createElement(Badge, {
+    type: "blue"
+  }, log.chargen.length, " Chargen"))), /*#__PURE__*/React.createElement("div", {
+    className: "haccp-chargelist"
+  }, log.chargen.map((c, i) => {
+    const lo = getLO(lagerorte, c.lagerortId);
+    return /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "haccp-charge-row"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "haccp-charge-dot"
+    }), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1,
+        fontWeight: 700
+      }
+    }, c.artikelName), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: 'JetBrains Mono',
+        fontSize: 12,
+        color: C.blue,
+        fontWeight: 700
+      }
+    }, fmt(c.menge, 3), " ", c.einheit), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontFamily: 'JetBrains Mono',
+        fontSize: 11,
+        color: C.textMid
+      }
+    }, c.chargeNr), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: daysDiff(c.mhd) < 0 ? C.red : C.textMid
+      }
+    }, "MHD: ", c.mhd), lo && /*#__PURE__*/React.createElement("span", {
+      className: `lo-typ-badge lo-typ-${lo.typ}`,
+      style: {
+        fontSize: 10
+      }
+    }, lo.name));
+  })))), produktionsLog.length > 20 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center',
+      fontSize: 12,
+      color: C.textMid,
+      padding: '8px 0'
+    }
+  }, "\xC4ltere Eintr\xE4ge im Export-Backup gespeichert")))), selected && !showNeu && /*#__PURE__*/React.createElement(Modal, {
     title: `Produktion: ${selected.name}`,
     onClose: () => {
       setSelected(null);
@@ -5540,9 +5696,20 @@ ${artikel.map(a => {
     return `<tr><td>${a.name}</td><td>${b.toFixed(2)}</td><td>${a.einheit}</td><td>${best?.mhd || '—'}</td><td>${(b * a.ek).toFixed(2)} €</td></tr>`;
   }).join('')}
 </tbody></table>
-<div class="footer">MenuMetric PWA – Großküchen-Warenwirtschaft | Erstellt am ${new Date().toLocaleDateString('de-DE')}</div>
+
 </body></html>`;
-  const blob = new Blob([html], {
+
+  // Produktionslog heute
+  const heuteProdLog = (data.produktionsLog || []).filter(p => p.datum === heute);
+  const prodLogHtml = heuteProdLog.length > 0 ? `
+<h2>Produktionen & Chargenverwendung (HACCP)</h2>
+<table><thead><tr><th>Rezeptur</th><th>Portionen</th><th>Wareneinsatz</th><th>Chargen</th><th>Prod.-ID</th></tr></thead><tbody>
+${heuteProdLog.map(p => `<tr><td>${p.rezepturName}</td><td>${p.portionen}</td><td>${p.wareneinsatz.toFixed(2)} €</td><td>${p.chargen.map(c => `${c.artikelName} ${c.menge.toFixed(3)}${c.einheit} [${c.chargeNr}, MHD:${c.mhd}]`).join('<br>')}</td><td style="font-family:monospace;font-size:11px">${p.produktionsId}</td></tr>`).join('')}
+</tbody></table>` : '';
+
+  // HTML zusammensetzen mit Produktionslog
+  const finalHtml = html.replace('</body>', prodLogHtml + '<div class="footer">MenuMetric PWA – Großküchen-Warenwirtschaft | Erstellt am ' + new Date().toLocaleDateString('de-DE') + '</div></body>');
+  const blob = new Blob([finalHtml], {
     type: 'text/html;charset=utf-8'
   });
   const url = URL.createObjectURL(blob);
@@ -5921,7 +6088,40 @@ function Tagesabschluss({
     className: "kpi-lbl"
   }, "MHD-Alarme"), /*#__PURE__*/React.createElement("div", {
     className: "kpi-sub"
-  }, "\u22643 Tage"))), /*#__PURE__*/React.createElement("div", {
+  }, "\u22643 Tage"))), (() => {
+    const heuteProd = (data.produktionsLog || []).filter(p => p.datum === heute);
+    return heuteProd.length > 0 ? /*#__PURE__*/React.createElement("div", {
+      className: "card"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "card-head"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "card-title"
+    }, "\uD83D\uDC68\u200D\uD83C\uDF73 Produktionen heute"), /*#__PURE__*/React.createElement(Badge, {
+      type: "blue"
+    }, heuteProd.length)), /*#__PURE__*/React.createElement("div", {
+      className: "tbl-scroll"
+    }, /*#__PURE__*/React.createElement("table", {
+      className: "tbl"
+    }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Rezeptur"), /*#__PURE__*/React.createElement("th", null, "Portionen"), /*#__PURE__*/React.createElement("th", null, "Wareneinsatz"), /*#__PURE__*/React.createElement("th", null, "Chargen"), /*#__PURE__*/React.createElement("th", null, "ID"))), /*#__PURE__*/React.createElement("tbody", null, heuteProd.map(p => /*#__PURE__*/React.createElement("tr", {
+      key: p.id
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 700
+      }
+    }, p.rezepturName), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, p.portionen), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(p.wareneinsatz)), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, p.chargen.length), /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontSize: 11,
+        fontFamily: 'JetBrains Mono',
+        color: C.textMid
+      }
+    }, p.produktionsId))))))) : null;
+  })(), /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card-head"
@@ -6240,7 +6440,8 @@ function App() {
         archivBest: (data.archivBest || []).slice(0, 200),
         tagesabschluesse: (data.tagesabschluesse || []).slice(0, 365),
         stornoProtokoll: (data.stornoProtokoll || []).slice(0, 500),
-        ausbuchungsLog: (data.ausbuchungsLog || []).slice(0, 1000)
+        ausbuchungsLog: (data.ausbuchungsLog || []).slice(0, 1000),
+        produktionsLog: (data.produktionsLog || []).slice(0, 500)
       };
       localStorage.setItem('menumetric-v1', JSON.stringify(trimmedData));
     } catch {}
