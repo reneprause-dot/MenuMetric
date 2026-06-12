@@ -1516,30 +1516,39 @@ function Wareneingang({
     setMhdErr(false);
   }
 
-  // FIX-1: Bestellung als Vorlage übernehmen
+  // FIX-1: Bestellung als Vorlage übernehmen (unterstützt Standard- und PCM-Bestellungen)
   function uebernehmeBest(best) {
     const positionen = best.positionen.map(p => {
       const art = getA(artikel, p.artikelId);
       return {
         artikelId: String(p.artikelId),
         menge: p.menge,
-        ek: p.ek,
+        ek: p.ek || '',
         mhd: '',
         lagerort: 'Kühlraum A',
         id: Date.now() + Math.random(),
-        artName: art?.name,
-        artEinheit: art?.einheit
+        artName: p.artikelName || art?.name || '',
+        artEinheit: p.einheit || art?.einheit || '',
+        pcmArtNr: p.pcmArtNr || null,
+        gebindeLabel: p.gebindeLabel || null
       };
     });
+    // PCM-Bestellungen haben lieferantName direkt gespeichert
+    const liefName = best.lieferantName || getL(lieferanten, best.lieferantId)?.name || '';
     setForm({
       lieferantId: String(best.lieferantId),
       datum: todayStr(),
-      belegnr: `WE-zu-${best.belegnr}`,
+      belegnr: `WE-${best.belegnr}`,
       positionen,
-      bestellungId: best.id
+      bestellungId: best.id,
+      lieferantInfo: {
+        name: liefName,
+        email: best.lieferantEmail || '',
+        telefon: best.lieferantTelefon || ''
+      }
     });
     setStep(2);
-    toast(`Bestellung ${best.belegnr} übernommen – MHD-Daten ergänzen`, 'info');
+    toast(`${best.quelle === 'PCM' ? 'PCM-' : ''}Bestellung ${best.belegnr} übernommen – bitte MHD ergänzen`, 'info');
   }
   function addPos() {
     if (!pos.artikelId || !pos.menge) return;
@@ -1655,6 +1664,7 @@ function Wareneingang({
     className: "tbl"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Beleg-Nr."), /*#__PURE__*/React.createElement("th", null, "Lieferant"), /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Pos."), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, offeneBest.map(b => {
     const lief = getL(lieferanten, b.lieferantId);
+    const liefName = b.lieferantName || lief?.name || '—';
     return /*#__PURE__*/React.createElement("tr", {
       key: b.id
     }, /*#__PURE__*/React.createElement("td", {
@@ -1662,7 +1672,17 @@ function Wareneingang({
         fontWeight: 800,
         color: C.blue
       }
-    }, b.belegnr), /*#__PURE__*/React.createElement("td", null, lief?.name), /*#__PURE__*/React.createElement("td", null, b.datum), /*#__PURE__*/React.createElement("td", {
+    }, b.belegnr, b.quelle === 'PCM' && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        background: C.blueLight,
+        color: C.blue,
+        padding: '1px 6px',
+        borderRadius: 10,
+        marginLeft: 6,
+        fontWeight: 800
+      }
+    }, "PCM")), /*#__PURE__*/React.createElement("td", null, liefName), /*#__PURE__*/React.createElement("td", null, b.datum), /*#__PURE__*/React.createElement("td", {
       className: "mono"
     }, b.positionen.length), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
       className: "btn btn-success btn-sm",
@@ -1824,7 +1844,7 @@ function Wareneingang({
     }
   }, "\u26A0 MHD fehlt")), /*#__PURE__*/React.createElement("div", {
     className: "pos-item-detail"
-  }, fmt(p.menge, 2), " ", p.artEinheit, " \xB7 ", p.ek ? fmtE(Number(p.ek)) + '/Stk' : '—', " \xB7 MHD: ", p.mhd || '—')), !p.mhd && /*#__PURE__*/React.createElement("input", {
+  }, fmt(p.menge, 2), " ", p.artEinheit, " \xB7 ", p.ek ? fmtE(Number(p.ek)) + '/Stk' : '—', " \xB7 MHD: ", p.mhd || '—', p.pcmArtNr && ` · PCM: ${p.pcmArtNr}`, p.gebindeLabel && ` · ${p.gebindeLabel}`)), !p.mhd && /*#__PURE__*/React.createElement("input", {
     type: "date",
     style: {
       width: 140,
@@ -3483,52 +3503,103 @@ function Preisvergleich({
 }) {
   const {
     artikel,
-    lager
+    lager,
+    lieferanten
   } = data;
   const [warenkorb, setWarenkorb] = useState([]);
   const [showWK, setShowWK] = useState(false);
   const [search, setSearch] = useState('');
   const [filterAmpel, setFilterAmpel] = useState('alle');
+  // Mengen-State: key = `${artikelId}-${lieferantId}-${gIdx}` -> Anzahl
+  const [mengen, setMengen] = useState({});
   const katalogArtikel = [...new Set(PCM_KATALOG.map(k => k.artikelId))].map(aId => getA(artikel, aId)).filter(Boolean).filter(a => !search || a.name.toLowerCase().includes(search.toLowerCase()));
-  function addToWarenkorb(artikelId, lieferantId, gebinde) {
+  function getMenge(aId, lId, gIdx) {
+    return mengen[`${aId}-${lId}-${gIdx}`] || 1;
+  }
+  function setMenge(aId, lId, gIdx, val) {
+    setMengen(m => ({
+      ...m,
+      [`${aId}-${lId}-${gIdx}`]: Math.max(1, Math.round(val))
+    }));
+  }
+  function addToWarenkorb(artikelId, lieferantId, gebinde, anzahl) {
     const art = getA(artikel, artikelId);
     const k = PCM_KATALOG.find(x => x.artikelId === artikelId && x.lieferantId === lieferantId);
+    const lief = getL(lieferanten, lieferantId);
     const key = `${artikelId}-${lieferantId}-${gebinde.label}`;
+    const gesamtMenge = gebinde.menge * anzahl;
+    const gesamtWert = gebinde.ek * anzahl;
     setWarenkorb(wk => {
       const ex = wk.findIndex(w => w.key === key);
-      if (ex >= 0) return wk.map((w, i) => i === ex ? {
-        ...w,
-        anzahl: w.anzahl + 1
-      } : w);
+      if (ex >= 0) {
+        return wk.map((w, i) => i === ex ? {
+          ...w,
+          anzahl: w.anzahl + anzahl,
+          gesamtMenge: w.gesamtMenge + gesamtMenge,
+          gesamtWert: w.gesamtWert + gesamtWert
+        } : w);
+      }
       return [...wk, {
         key,
         artikelId,
         lieferantId,
         artikelName: art.name,
-        lieferantName: k.lieferantName,
+        artikelEinheit: art.einheit,
+        lieferantName: k?.lieferantName || lief?.name || '',
+        lieferantEmail: lief?.email || '',
+        lieferantTelefon: lief?.telefon || '',
+        pcmArtNr: k?.pcmArtNr || null,
         gebinde,
-        anzahl: 1
+        anzahl,
+        gesamtMenge,
+        // Gebinde-Anzahl × Gebinde-Menge = effektive Menge
+        gesamtWert,
+        // Gebinde-Anzahl × Gebinde-EK
+        stueckpreis: gebinde.ek / gebinde.menge
       }];
     });
-    toast(`${art.name} – ${gebinde.label} in Warenkorb`, 'success');
+    toast(`${anzahl}× ${art.name} (${gebinde.label}) in Warenkorb`, 'success');
   }
+
+  // FIX: Bestellung mit vollständigen Lieferantendaten + Positionsdetails
+  // so dass WE automatisch vorbefüllt werden kann
   function bestellungAbschicken() {
     const byLief = {};
     warenkorb.forEach(w => {
-      if (!byLief[w.lieferantId]) byLief[w.lieferantId] = [];
-      byLief[w.lieferantId].push({
+      const lid = w.lieferantId;
+      if (!byLief[lid]) byLief[lid] = {
+        lieferantId: lid,
+        lieferantName: w.lieferantName,
+        lieferantEmail: w.lieferantEmail,
+        lieferantTelefon: w.lieferantTelefon,
+        positionen: []
+      };
+      byLief[lid].positionen.push({
         artikelId: w.artikelId,
-        menge: w.gebinde.menge * w.anzahl,
-        ek: w.gebinde.ek / w.gebinde.menge
+        artikelName: w.artikelName,
+        gebindeLabel: w.gebinde.label,
+        gebindeMenge: w.gebinde.menge,
+        anzahlGebinde: w.anzahl,
+        menge: w.gesamtMenge,
+        // effektive Gesamtmenge
+        ek: w.stueckpreis,
+        // normierter Stückpreis für WE
+        pcmArtNr: w.pcmArtNr,
+        einheit: w.artikelEinheit
       });
     });
-    const newBest = Object.entries(byLief).map(([lid, pos]) => ({
+    const newBest = Object.values(byLief).map(lief => ({
       id: Date.now() + Math.random(),
-      lieferantId: Number(lid),
+      lieferantId: lief.lieferantId,
+      lieferantName: lief.lieferantName,
+      // direkt gespeichert
+      lieferantEmail: lief.lieferantEmail,
+      lieferantTelefon: lief.lieferantTelefon,
       datum: todayStr(),
       status: 'Offen',
-      belegnr: `PCM-${Date.now().toString().slice(-5)}`,
-      positionen: pos
+      quelle: 'PCM',
+      belegnr: `PCM-${Math.random().toString(36).slice(2, 7).toUpperCase()}`,
+      positionen: lief.positionen
     }));
     setData(d => ({
       ...d,
@@ -3536,9 +3607,22 @@ function Preisvergleich({
     }));
     setWarenkorb([]);
     setShowWK(false);
-    toast(`${newBest.length} PCM-Bestellung(en) angelegt`, 'success');
+    toast(`${newBest.length} PCM-Bestellung(en) angelegt – WE kann direkt eingebucht werden`, 'success');
   }
-  const wkGesamt = warenkorb.reduce((s, w) => s + w.gebinde.ek * w.anzahl, 0);
+  function updateWKAnzahl(key, delta) {
+    setWarenkorb(wk => wk.map(w => {
+      if (w.key !== key) return w;
+      const newAnz = Math.max(1, w.anzahl + delta);
+      return {
+        ...w,
+        anzahl: newAnz,
+        gesamtMenge: w.gebinde.menge * newAnz,
+        gesamtWert: w.gebinde.ek * newAnz
+      };
+    }));
+  }
+  const wkGesamt = warenkorb.reduce((s, w) => s + w.gesamtWert, 0);
+  const wkPositionen = warenkorb.reduce((s, w) => s + w.gesamtMenge, 0);
   return /*#__PURE__*/React.createElement("div", null, !pcmState?.connected && /*#__PURE__*/React.createElement("div", {
     className: "alert warn"
   }, /*#__PURE__*/React.createElement("span", {
@@ -3664,45 +3748,110 @@ function Preisvergleich({
         type: "red"
       }, "\uD83D\uDD12 GESPERRT")), /*#__PURE__*/React.createElement("div", {
         className: "pv-gebinde-list"
-      }, a.gebinde.map((g, gIdx) => /*#__PURE__*/React.createElement("div", {
-        key: gIdx,
-        className: `pv-gebinde-item${isLocked ? ' disabled' : ''}`
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 14
-        }
-      }, isLocked ? '🔒' : '📦'), /*#__PURE__*/React.createElement("div", {
-        style: {
-          flex: 1,
-          fontSize: 13,
-          fontWeight: 700
-        }
-      }, g.label), /*#__PURE__*/React.createElement("div", {
-        style: {
-          textAlign: 'right'
-        }
-      }, /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontFamily: 'JetBrains Mono',
-          fontSize: 13,
-          fontWeight: 700,
-          color: C.blue
-        }
-      }, fmtE(g.ek)), /*#__PURE__*/React.createElement("div", {
-        style: {
-          fontSize: 11,
-          color: C.textLight
-        }
-      }, fmtE(g.ek / g.menge), "/", g.einheit)), !isLocked && /*#__PURE__*/React.createElement("button", {
-        className: "btn btn-primary btn-sm",
-        style: {
-          flexShrink: 0,
-          minHeight: 32,
-          padding: '0 10px',
-          fontSize: 12
-        },
-        onClick: () => addToWarenkorb(art.id, a.lieferantId, g)
-      }, "+ Bestellen"))))), /*#__PURE__*/React.createElement("div", {
+      }, a.gebinde.map((g, gIdx) => {
+        const mkey = `${art.id}-${a.lieferantId}-${gIdx}`;
+        const anzahl = getMenge(art.id, a.lieferantId, gIdx);
+        const gesamtpreis = g.ek * anzahl;
+        return /*#__PURE__*/React.createElement("div", {
+          key: gIdx,
+          className: `pv-gebinde-item${isLocked ? ' disabled' : ''}`,
+          style: {
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 8
+          }
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 14,
+            flexShrink: 0
+          }
+        }, isLocked ? '🔒' : '📦'), /*#__PURE__*/React.createElement("div", {
+          style: {
+            flex: '1 1 120px',
+            minWidth: 0
+          }
+        }, /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 13,
+            fontWeight: 700
+          }
+        }, g.label), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11,
+            color: C.textLight
+          }
+        }, fmtE(g.ek / g.menge), "/", g.einheit)), /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontFamily: 'JetBrains Mono',
+            fontSize: 13,
+            fontWeight: 700,
+            color: C.blue,
+            textAlign: 'right',
+            flexShrink: 0
+          }
+        }, fmtE(g.ek), anzahl > 1 && /*#__PURE__*/React.createElement("div", {
+          style: {
+            fontSize: 11,
+            color: C.textMid
+          }
+        }, "\xD7 ", anzahl, " = ", fmtE(gesamtpreis))), !isLocked && /*#__PURE__*/React.createElement("div", {
+          style: {
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+            flexShrink: 0
+          }
+        }, /*#__PURE__*/React.createElement("button", {
+          style: {
+            width: 32,
+            height: 32,
+            background: C.bg,
+            border: `1.5px solid ${C.border}`,
+            borderRadius: 8,
+            fontSize: 18,
+            fontWeight: 700,
+            cursor: 'pointer',
+            color: C.blue,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          },
+          onClick: () => setMenge(art.id, a.lieferantId, gIdx, anzahl - 1)
+        }, "\u2212"), /*#__PURE__*/React.createElement("div", {
+          style: {
+            minWidth: 32,
+            textAlign: 'center',
+            fontFamily: 'JetBrains Mono',
+            fontSize: 14,
+            fontWeight: 800
+          }
+        }, anzahl), /*#__PURE__*/React.createElement("button", {
+          style: {
+            width: 32,
+            height: 32,
+            background: C.bg,
+            border: `1.5px solid ${C.border}`,
+            borderRadius: 8,
+            fontSize: 18,
+            fontWeight: 700,
+            cursor: 'pointer',
+            color: C.blue,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          },
+          onClick: () => setMenge(art.id, a.lieferantId, gIdx, anzahl + 1)
+        }, "+"), /*#__PURE__*/React.createElement("button", {
+          className: "btn btn-primary btn-sm",
+          style: {
+            minHeight: 32,
+            padding: '0 10px',
+            fontSize: 12,
+            marginLeft: 4
+          },
+          onClick: () => addToWarenkorb(art.id, a.lieferantId, g, anzahl)
+        }, "In Warenkorb")));
+      }))), /*#__PURE__*/React.createElement("div", {
         className: "pv-ampel-col"
       }, /*#__PURE__*/React.createElement(AmpelTurm, {
         status: status
@@ -3728,31 +3877,44 @@ function Preisvergleich({
   }, "\uD83D\uDED2", /*#__PURE__*/React.createElement("span", {
     className: "wk-count"
   }, warenkorb.length)), showWK && /*#__PURE__*/React.createElement(Modal, {
-    title: `🛒 Warenkorb (${warenkorb.length})`,
+    title: `🛒 Warenkorb (${warenkorb.length} Pos.)`,
     onClose: () => setShowWK(false),
     footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
       style: {
+        background: C.bg,
+        borderRadius: 12,
+        padding: '12px 14px',
+        marginBottom: 8
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
         display: 'flex',
         justifyContent: 'space-between',
-        padding: '0 0 10px',
         fontWeight: 800,
-        fontSize: 15
+        fontSize: 15,
+        marginBottom: 4
       }
-    }, /*#__PURE__*/React.createElement("span", null, "Gesamt:"), /*#__PURE__*/React.createElement("span", {
+    }, /*#__PURE__*/React.createElement("span", null, "Gesamtwert:"), /*#__PURE__*/React.createElement("span", {
       style: {
         color: C.blue,
         fontFamily: 'JetBrains Mono'
       }
-    }, fmtE(wkGesamt))), /*#__PURE__*/React.createElement("button", {
+    }, fmtE(wkGesamt))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.textMid,
+        fontWeight: 600
+      }
+    }, [...new Set(warenkorb.map(w => w.lieferantName))].length, " Lieferant(en) \xB7 Wird direkt als Bestellung angelegt")), /*#__PURE__*/React.createElement("button", {
       className: "btn btn-primary btn-xl",
       onClick: bestellungAbschicken
-    }, "\uD83D\uDCCB Bestellungen anlegen"), /*#__PURE__*/React.createElement("button", {
+    }, "\uD83D\uDCCB Bestellung", [...new Set(warenkorb.map(w => w.lieferantId))].length > 1 ? 'en' : '+', " anlegen & WE vorbereiten"), /*#__PURE__*/React.createElement("button", {
       className: "btn btn-ghost",
       style: {
         width: '100%'
       },
       onClick: () => setShowWK(false)
-    }, "Schlie\xDFen"))
+    }, "Weiter einkaufen"))
   }, warenkorb.map(w => /*#__PURE__*/React.createElement("div", {
     key: w.key,
     style: {
@@ -3764,25 +3926,82 @@ function Preisvergleich({
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      flex: 1
+      flex: 1,
+      minWidth: 0
     }
   }, /*#__PURE__*/React.createElement("div", {
     style: {
-      fontWeight: 700
+      fontWeight: 800,
+      fontSize: 14
     }
   }, w.artikelName), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 12,
+      color: C.textMid,
+      fontWeight: 600
+    }
+  }, w.lieferantName, " \xB7 ", w.gebinde.label), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
       color: C.textMid
     }
-  }, w.lieferantName, " \xB7 ", w.gebinde.label, " \xD7 ", w.anzahl)), /*#__PURE__*/React.createElement("div", {
+  }, "Effektiv: ", fmt(w.gesamtMenge, 2), " ", w.artikelEinheit, " \xB7 ", fmtE(w.stueckpreis), "/", w.artikelEinheit)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 4,
+      flexShrink: 0
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    style: {
+      width: 28,
+      height: 28,
+      background: C.bg,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 6,
+      fontSize: 16,
+      fontWeight: 700,
+      cursor: 'pointer',
+      color: C.blue,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    onClick: () => updateWKAnzahl(w.key, -1)
+  }, "\u2212"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      minWidth: 28,
+      textAlign: 'center',
+      fontFamily: 'JetBrains Mono',
+      fontSize: 14,
+      fontWeight: 800
+    }
+  }, w.anzahl), /*#__PURE__*/React.createElement("button", {
+    style: {
+      width: 28,
+      height: 28,
+      background: C.bg,
+      border: `1.5px solid ${C.border}`,
+      borderRadius: 6,
+      fontSize: 16,
+      fontWeight: 700,
+      cursor: 'pointer',
+      color: C.blue,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center'
+    },
+    onClick: () => updateWKAnzahl(w.key, 1)
+  }, "+")), /*#__PURE__*/React.createElement("div", {
     style: {
       fontFamily: 'JetBrains Mono',
-      fontWeight: 700,
+      fontWeight: 800,
       color: C.blue,
-      fontSize: 14
+      fontSize: 14,
+      minWidth: 70,
+      textAlign: 'right'
     }
-  }, fmtE(w.gebinde.ek * w.anzahl)), /*#__PURE__*/React.createElement("button", {
+  }, fmtE(w.gesamtWert)), /*#__PURE__*/React.createElement("button", {
     className: "pos-remove",
     onClick: () => setWarenkorb(wk => wk.filter(x => x.key !== w.key))
   }, "\u2715")))));
