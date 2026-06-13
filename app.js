@@ -239,6 +239,53 @@ const css = `
   /* Ausbuchen-Log */
   .log-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid #E2E8F0;font-size:13px;}
   .log-row:last-child{border-bottom:none;}
+  /* Portionenplanung */
+  .plan-rez-row{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid #E2E8F0;background:white;}
+  .plan-rez-row:last-child{border-bottom:none;}
+  .plan-rez-name{flex:1;font-size:14px;font-weight:700;}
+  .plan-bedarf-row{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;font-size:13px;}
+  .plan-bedarf-row.ok{background:#F0FDF4;border:1px solid #BBF7D0;}
+  .plan-bedarf-row.warn{background:#FFF5F5;border:1px solid #FECACA;}
+  .plan-bedarf-row.partial{background:#FFFBEB;border:1px solid #FDE68A;}
+  /* Bestellvorlagen */
+  .vorl-card{background:white;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px;margin-bottom:10px;}
+  .vorl-card-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;}
+  .vorl-pos-list{display:flex;flex-direction:column;gap:4px;margin-top:8px;}
+  .vorl-pos-row{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;background:#F8FAFC;border-radius:8px;font-size:12px;font-weight:600;}
+  /* Lieferrhythmus */
+  .rhythmus-dot{width:28px;height:28px;border-radius:50%;border:2px solid #E2E8F0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;cursor:pointer;transition:all 0.1s;color:#94A3B8;flex-shrink:0;}
+  .rhythmus-dot.active{background:#2563EB;border-color:#2563EB;color:white;}
+  .rhythmus-row{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+  /* Schnellerfassung */
+  .vb-typ-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px;}
+  .vb-typ-card{background:white;border:2px solid #E2E8F0;border-radius:14px;padding:14px 10px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;transition:all 0.15s;text-align:center;font-family:'Nunito',sans-serif;}
+  .vb-typ-card:active{transform:scale(0.97);}
+  .vb-typ-card.active{border-color:#2563EB;background:#EFF6FF;}
+  .vb-typ-icon{font-size:28px;}
+  .vb-typ-label{font-size:12px;font-weight:800;color:#0F172A;line-height:1.2;}
+  .vb-typ-sub{font-size:10px;color:#94A3B8;font-weight:600;}
+  .vb-history-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #E2E8F0;}
+  .vb-history-row:last-child{border-bottom:none;}
+  /* Soll/Ist Kalkulation */
+  .sollist-row{display:flex;align-items:center;padding:10px 14px;border-bottom:1px solid #E2E8F0;gap:8px;}
+  .sollist-row:last-child{border-bottom:none;}
+  .sollist-name{flex:1;font-size:14px;font-weight:700;}
+  .sollist-val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;min-width:72px;text-align:right;}
+  .abw-pos{color:#16A34A;font-weight:800;}
+  .abw-neg{color:#DC2626;font-weight:800;}
+  .abw-null{color:#94A3B8;}
+  .kalk-tabs{display:flex;gap:6px;margin-bottom:14px;border-bottom:1.5px solid #E2E8F0;padding-bottom:0;}
+  .kalk-tab{padding:8px 14px;font-size:13px;font-weight:800;cursor:pointer;border:none;background:none;font-family:'Nunito',sans-serif;color:#94A3B8;border-bottom:3px solid transparent;margin-bottom:-1.5px;}
+  .kalk-tab.active{color:#2563EB;border-bottom-color:#2563EB;}
+  /* MHD-Verbrauchsvorschlag */
+  .vorschlag-card{background:white;border:1.5px solid #FDE68A;border-radius:14px;padding:14px;margin-bottom:10px;position:relative;overflow:hidden;}
+  .vorschlag-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#D97706,#F59E0B);}
+  .vorschlag-card.gruen{border-color:#BBF7D0;}.vorschlag-card.gruen::before{background:linear-gradient(90deg,#16A34A,#4ADE80);}
+  .vorschlag-rez-list{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .vorschlag-rez-row{display:flex;align-items:center;gap:10px;padding:8px 12px;background:#FAFAFA;border-radius:10px;border:1px solid #E2E8F0;cursor:pointer;transition:all 0.12s;}
+  .vorschlag-rez-row:hover{border-color:#2563EB;background:#EFF6FF;}
+  .vorschlag-rez-name{flex:1;font-size:14px;font-weight:700;}
+  .vorschlag-ampel{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
   /* HACCP / Chargenrückverfolgung */
   .haccp-card{background:white;border:1.5px solid #E2E8F0;border-radius:14px;padding:14px;margin-bottom:10px;}
   .haccp-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
@@ -572,7 +619,10 @@ const INIT = {
   tagesabschluesse: [],
   stornoProtokoll: [],
   ausbuchungsLog: [],
-  produktionsLog: []
+  produktionsLog: [],
+  bestellvorlagen: [],
+  lieferrhythmen: [],
+  tagesplaene: []
 };
 
 // ── PCM KATALOG ───────────────────────────────────────────────────────────────
@@ -952,6 +1002,65 @@ function getMaxPortionen(rez, lager) {
   });
   return Math.min(...moeglich);
 }
+
+// Soll/Ist Auswertung pro Rezeptur aus Produktionslog
+function getSollIst(rezepturId, produktionsLog, rezepturen, artikel) {
+  const logs = (produktionsLog || []).filter(l => l.rezepturId === rezepturId);
+  if (logs.length === 0) return null;
+  const rez = rezepturen.find(r => r.id === rezepturId);
+  if (!rez) return null;
+  const totalPortionen = logs.reduce((s, l) => s + l.portionen, 0);
+  const totalIst = logs.reduce((s, l) => s + l.wareneinsatz, 0);
+
+  // Soll: Rezepturkosten × tatsächliche Portionen
+  // Vereinfacht: Stammkosten aus Rezeptur × produzierte Portionen
+  // Echter Soll-EK: Summe(Zutat.menge × Artikel.ek) pro Portion
+  const sollProPort = rez.zutaten.reduce((s, z) => {
+    const art = artikel.find(a => a.id === z.artikelId);
+    return s + z.menge * (art?.ek || 0);
+  }, 0);
+  const totalSoll = sollProPort * totalPortionen;
+
+  // Ist pro Portion (Durchschnitt über alle Produktionen)
+  const istProPort = totalPortionen > 0 ? totalIst / totalPortionen : 0;
+  const abwProPort = istProPort - sollProPort;
+  const abwProzent = sollProPort > 0 ? abwProPort / sollProPort * 100 : 0;
+
+  // Zutaten-Aufschlüsselung: Soll vs. Ist pro Artikel
+  const zutatenDetail = rez.zutaten.map(z => {
+    const art = artikel.find(a => a.id === z.artikelId);
+    const sollMenge = z.menge * totalPortionen;
+    const sollWert = sollMenge * (art?.ek || 0);
+    // Ist: aus Chargen im Log aggregieren
+    const istMenge = logs.reduce((s, l) => s + l.chargen.filter(c => c.artikelId === z.artikelId).reduce((cs, c) => cs + c.menge, 0), 0);
+    const istWert = logs.reduce((s, l) => s + l.chargen.filter(c => c.artikelId === z.artikelId).reduce((cs, c) => cs + c.menge * c.ek, 0), 0);
+    return {
+      artikelId: z.artikelId,
+      name: art?.name || '?',
+      einheit: art?.einheit || '',
+      sollMenge,
+      sollWert,
+      istMenge,
+      istWert,
+      abwMenge: istMenge - sollMenge,
+      abwWert: istWert - sollWert
+    };
+  });
+  return {
+    rezepturId,
+    rezepturName: rez.name,
+    totalPortionen,
+    sollProPort,
+    istProPort,
+    abwProPort,
+    abwProzent,
+    totalSoll,
+    totalIst,
+    totalAbw: totalIst - totalSoll,
+    produktionenCount: logs.length,
+    zutatenDetail
+  };
+}
 function getRezKosten(rez, artikel, lager) {
   return rez.zutaten.reduce((s, z) => {
     const ch = lager.filter(l => l.artikelId === z.artikelId).sort((a, b) => new Date(a.mhd) - new Date(b.mhd))[0];
@@ -1142,7 +1251,8 @@ function Dashboard({
     artikel,
     lager,
     verbrauch,
-    bestellungen
+    bestellungen,
+    rezepturen = []
   } = data;
   const totalWert = lager.reduce((s, l) => s + l.menge * l.ek, 0);
   const unterMindest = artikel.filter(a => getLB(lager, a.id) < a.mindestbestand).length;
@@ -1164,6 +1274,35 @@ function Dashboard({
   const maxB = Math.max(...weekBars, 1);
   const todayIdx = dow === 0 ? 6 : dow - 1;
   const mhdWarn = lager.filter(l => daysDiff(l.mhd) >= 0 && daysDiff(l.mhd) <= 7);
+
+  // MHD-Verbrauchsvorschlag: Chargen die in ≤7 Tagen ablaufen
+  // → welche Rezepturen verwenden diese Artikel + sind produzierbar?
+  const mhdArtikelIds = new Set(mhdWarn.map(l => l.artikelId));
+  const vorschlaege = (rezepturen || []).map(rez => {
+    // Welche ablaufenden Artikel verwendet diese Rezeptur?
+    const betroffeneZutaten = rez.zutaten.filter(z => mhdArtikelIds.has(z.artikelId));
+    if (betroffeneZutaten.length === 0) return null;
+    // Max produzierbare Portionen (nur freie Ware)
+    const maxPort = getMaxPortionen(rez, lager);
+    if (maxPort === 0) return null;
+    // Dringlichkeit: min. verbleibende Tage der betroffenen Zutaten
+    const minDays = Math.min(...betroffeneZutaten.map(z => {
+      const chargen = lager.filter(l => l.artikelId === z.artikelId && daysDiff(l.mhd) >= 0 && daysDiff(l.mhd) <= 7);
+      return chargen.length > 0 ? Math.min(...chargen.map(l => daysDiff(l.mhd))) : 7;
+    }));
+    // Warenwert der ablaufenden Zutaten die verbraucht würden
+    const rettbareWert = betroffeneZutaten.reduce((s, z) => {
+      const chargen = mhdWarn.filter(l => l.artikelId === z.artikelId);
+      return s + chargen.reduce((cs, l) => cs + Math.min(l.menge, z.menge * maxPort) * l.ek, 0);
+    }, 0);
+    return {
+      rez,
+      maxPort,
+      minDays,
+      betroffeneZutaten,
+      rettbareWert
+    };
+  }).filter(Boolean).sort((a, b) => a.minDays - b.minDays);
   const wochentage = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
   return /*#__PURE__*/React.createElement("div", null, mhdAlarm > 0 && /*#__PURE__*/React.createElement("div", {
     className: "alert danger"
@@ -1189,7 +1328,92 @@ function Dashboard({
   }, offeneBest, " offene Bestellung", offeneBest !== 1 ? 'en' : '', " \u2013 auf Wareneingang warten"), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-ghost btn-sm",
     onClick: () => setPage('wareneingang')
-  }, "Einbuchen")), /*#__PURE__*/React.createElement("div", {
+  }, "Einbuchen")), (() => {
+    const hTag = new Date().getDay();
+    const hRhythmen = (data.lieferrhythmen || []).filter(r => r.aktiv && r.tage.includes(hTag));
+    return hRhythmen.length > 0 ? /*#__PURE__*/React.createElement("div", {
+      className: "alert success"
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "alert-icon"
+    }, "\uD83D\uDCC5"), /*#__PURE__*/React.createElement("div", {
+      className: "alert-text"
+    }, /*#__PURE__*/React.createElement("strong", null, "Heute Bestelltag:"), " ", hRhythmen.map(r => getL(data.lieferanten || [], Number(r.lieferantId))?.name || '—').join(', ')), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost btn-sm",
+      onClick: () => setPage('bestellungen')
+    }, "Bestellen")) : null;
+  })(), vorschlaege.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14,
+      border: `1.5px solid ${C.yellowLight}`,
+      background: '#FFFDF0'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head",
+    style: {
+      background: '#FFFDF0',
+      borderColor: C.yellowLight
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDCA1 Jetzt produzieren \u2013 MHD-Ware retten"), /*#__PURE__*/React.createElement(Badge, {
+    type: "yellow"
+  }, vorschlaege.length, " Vorschlag", vorschlaege.length !== 1 ? 'e' : '')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '8px 0'
+    }
+  }, vorschlaege.slice(0, 5).map(v => {
+    const dringend = v.minDays <= 2;
+    return /*#__PURE__*/React.createElement("div", {
+      key: v.rez.id,
+      className: "vorschlag-rez-row",
+      style: {
+        margin: '0 12px 6px',
+        background: dringend ? '#FFF5F5' : '#FAFAFA',
+        borderColor: dringend ? C.red : C.border
+      },
+      onClick: () => setPage('rezepturen')
+    }, /*#__PURE__*/React.createElement("div", {
+      className: `vorschlag-ampel`,
+      style: {
+        background: dringend ? C.red : v.minDays <= 4 ? C.yellow : C.green
+      }
+    }), /*#__PURE__*/React.createElement("div", {
+      className: "vorschlag-rez-name"
+    }, v.rez.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: 2,
+        flexShrink: 0
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 12,
+        fontWeight: 800,
+        color: dringend ? C.red : C.yellow
+      }
+    }, v.minDays === 0 ? 'Heute!' : v.minDays === 1 ? 'Morgen!' : v.minDays + ' Tage'), /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: C.textMid
+      }
+    }, "Max ", v.maxPort, " Port. \xB7 ", fmtE(v.rettbareWert), " rettbar")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C.textMid,
+        flexShrink: 0
+      }
+    }, "\u2192"));
+  }), vorschlaege.length > 5 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      textAlign: 'center',
+      fontSize: 12,
+      color: C.textMid,
+      padding: '4px 0'
+    }
+  }, "+", vorschlaege.length - 5, " weitere Vorschl\xE4ge in Produktion"))), /*#__PURE__*/React.createElement("div", {
     className: "kpi-grid"
   }, /*#__PURE__*/React.createElement("div", {
     className: "kpi-card blue"
@@ -1262,14 +1486,27 @@ function Dashboard({
     className: "tile-sub"
   }, "Rezeptur abbuchen"))), /*#__PURE__*/React.createElement("button", {
     className: "action-tile orange",
-    onClick: () => setPage('inventur')
+    onClick: () => setPage('schnell')
   }, /*#__PURE__*/React.createElement("div", {
     className: "tile-icon"
-  }, "\uD83D\uDD22"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  }, "\u26A1"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "tile-label"
-  }, "Inventur"), /*#__PURE__*/React.createElement("div", {
+  }, "Schnellerfassung"), /*#__PURE__*/React.createElement("div", {
     className: "tile-sub"
-  }, "Best\xE4nde z\xE4hlen"))), /*#__PURE__*/React.createElement("button", {
+  }, "Verbrauch ohne Rezeptur"))), /*#__PURE__*/React.createElement("button", {
+    className: "action-tile blue",
+    style: {
+      background: '#F0FDF4',
+      border: '1.5px solid #BBF7D0'
+    },
+    onClick: () => setPage('planung')
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "tile-icon"
+  }, "\uD83D\uDCC5"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tile-label"
+  }, "Tagesplanung"), /*#__PURE__*/React.createElement("div", {
+    className: "tile-sub"
+  }, "Portionen \u2192 Warenbedarf"))), /*#__PURE__*/React.createElement("button", {
     className: "action-tile purple",
     onClick: () => setPage('pcm')
   }, /*#__PURE__*/React.createElement("div", {
@@ -2751,12 +2988,14 @@ function Rezepturen({
     style: {
       display: 'flex',
       gap: 10,
-      marginBottom: 16
+      marginBottom: 16,
+      flexWrap: 'wrap'
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary btn-lg",
     style: {
-      flex: 1
+      flex: 1,
+      minWidth: 140
     },
     onClick: () => openNeu()
   }, "+ Neue Rezeptur"), /*#__PURE__*/React.createElement("button", {
@@ -2765,7 +3004,23 @@ function Rezepturen({
     style: {
       flexShrink: 0
     }
-  }, "\uD83D\uDD0D HACCP-Log ", produktionsLog.length > 0 && `(${produktionsLog.length})`)), /*#__PURE__*/React.createElement("div", {
+  }, "\uD83D\uDD0D HACCP-Log ", produktionsLog.length > 0 && `(${produktionsLog.length})`)), (() => {
+    const mhdArts = new Set(lager.filter(l => daysDiff(l.mhd) >= 0 && daysDiff(l.mhd) <= 7).map(l => l.artikelId));
+    const empfohlen = rezepturen.filter(r => r.zutaten.some(z => mhdArts.has(z.artikelId)) && getMaxPortionen(r, lager) > 0);
+    if (empfohlen.length === 0) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      className: "alert warn",
+      style: {
+        marginBottom: 14,
+        cursor: 'pointer'
+      },
+      onClick: () => {}
+    }, /*#__PURE__*/React.createElement("span", {
+      className: "alert-icon"
+    }, "\uD83D\uDCA1"), /*#__PURE__*/React.createElement("div", {
+      className: "alert-text"
+    }, /*#__PURE__*/React.createElement("strong", null, empfohlen.length, " Rezeptur", empfohlen.length !== 1 ? 'en' : '', " k\xF6nnen MHD-Ware aufbrauchen:"), ' ', empfohlen.map(r => r.name).join(', ')));
+  })(), /*#__PURE__*/React.createElement("div", {
     className: "rez-grid"
   }, rezepturen.map(rez => {
     const kosten = getRezKosten(rez, artikel, lager);
@@ -2807,7 +3062,21 @@ function Rezepturen({
       className: `max-port${maxPort < 5 ? ' warn' : ''}`
     }, "Max ", maxPort, " Port.") : /*#__PURE__*/React.createElement("span", {
       className: "max-port none"
-    }, "\u2717 Kein Bestand"), /*#__PURE__*/React.createElement("div", {
+    }, "\u2717 Kein Bestand"), (() => {
+      const mhdArts = new Set(lager.filter(l => daysDiff(l.mhd) >= 0 && daysDiff(l.mhd) <= 3).map(l => l.artikelId));
+      const hatMhd = rez.zutaten.some(z => mhdArts.has(z.artikelId));
+      return hatMhd ? /*#__PURE__*/React.createElement("span", {
+        style: {
+          fontSize: 10,
+          background: '#FEF3C7',
+          color: '#D97706',
+          padding: '2px 7px',
+          borderRadius: 10,
+          fontWeight: 800,
+          border: '1px solid #FDE68A'
+        }
+      }, "\u23F0 MHD-Ware") : null;
+    })(), /*#__PURE__*/React.createElement("div", {
       style: {
         display: 'flex',
         gap: 4
@@ -3438,8 +3707,150 @@ function Bestellungen({
     lager,
     lieferanten,
     bestellungen,
-    archivBest = []
+    archivBest = [],
+    bestellvorlagen = [],
+    lieferrhythmen = []
   } = data;
+  const [mainTab, setMainTab] = useState('bestellungen'); // 'bestellungen' | 'vorlagen' | 'rhythmen'
+  const [vorlModal, setVorlModal] = useState(false);
+  const [editVorl, setEditVorl] = useState(null);
+  const VORL_EMPTY = {
+    name: '',
+    lieferantId: '',
+    positionen: []
+  };
+  const [vorlForm, setVorlForm] = useState(VORL_EMPTY);
+  const [vorlPos, setVorlPos] = useState({
+    artikelId: '',
+    menge: 1
+  });
+  const [rhythmusModal, setRhythmusModal] = useState(false);
+  const [editRhythmus, setEditRhythmus] = useState(null);
+  const RHYTHMUS_EMPTY = {
+    lieferantId: '',
+    tage: [],
+    notiz: '',
+    aktiv: true
+  };
+  const [rhythmusForm, setRhythmusForm] = useState(RHYTHMUS_EMPTY);
+  const WOCHENTAGE = [{
+    id: 1,
+    k: 'Mo'
+  }, {
+    id: 2,
+    k: 'Di'
+  }, {
+    id: 3,
+    k: 'Mi'
+  }, {
+    id: 4,
+    k: 'Do'
+  }, {
+    id: 5,
+    k: 'Fr'
+  }, {
+    id: 6,
+    k: 'Sa'
+  }, {
+    id: 0,
+    k: 'So'
+  }];
+  function saveVorl() {
+    if (!vorlForm.name.trim() || !vorlForm.positionen.length) {
+      toast('Name und mind. 1 Position erforderlich', 'warn');
+      return;
+    }
+    const v = {
+      ...(editVorl || {}),
+      id: editVorl?.id || Date.now(),
+      ...vorlForm
+    };
+    setData(d => ({
+      ...d,
+      bestellvorlagen: editVorl ? d.bestellvorlagen.map(x => x.id === editVorl.id ? v : x) : [...(d.bestellvorlagen || []), v]
+    }));
+    toast((editVorl ? 'Vorlage aktualisiert' : 'Vorlage angelegt') + ': ' + vorlForm.name, 'success');
+    setVorlModal(false);
+    setEditVorl(null);
+    setVorlForm(VORL_EMPTY);
+    setVorlPos({
+      artikelId: '',
+      menge: 1
+    });
+  }
+  function addVorlPos() {
+    if (!vorlPos.artikelId || !vorlPos.menge) return;
+    const art = getA(artikel, Number(vorlPos.artikelId));
+    if (!art) return;
+    setVorlForm(f => ({
+      ...f,
+      positionen: [...f.positionen, {
+        artikelId: Number(vorlPos.artikelId),
+        menge: Number(vorlPos.menge),
+        einheit: art.einheit,
+        artikelName: art.name,
+        ek: art.ek
+      }]
+    }));
+    setVorlPos({
+      artikelId: '',
+      menge: 1
+    });
+  }
+  function vorlageBenutzen(vorl) {
+    const lief = getL(lieferanten, Number(vorl.lieferantId));
+    const best = {
+      id: Date.now() + Math.random(),
+      lieferantId: Number(vorl.lieferantId),
+      lieferantName: lief?.name || vorl.lieferantName || '',
+      lieferantEmail: lief?.email || '',
+      lieferantTelefon: lief?.telefon || '',
+      datum: todayStr(),
+      status: 'Offen',
+      quelle: 'Vorlage: ' + vorl.name,
+      belegnr: 'BE-' + Math.random().toString(36).slice(2, 7).toUpperCase(),
+      positionen: vorl.positionen
+    };
+    setData(d => ({
+      ...d,
+      bestellungen: [best, ...d.bestellungen]
+    }));
+    toast('Bestellung aus Vorlage "' + vorl.name + '" angelegt', 'success');
+    setMainTab('bestellungen');
+  }
+  function saveRhythmus() {
+    if (!rhythmusForm.lieferantId || !rhythmusForm.tage.length) {
+      toast('Lieferant und mind. 1 Bestelltag erforderlich', 'warn');
+      return;
+    }
+    const r = {
+      ...(editRhythmus || {}),
+      id: editRhythmus?.id || Date.now(),
+      ...rhythmusForm
+    };
+    setData(d => ({
+      ...d,
+      lieferrhythmen: editRhythmus ? d.lieferrhythmen.map(x => x.id === editRhythmus.id ? r : x) : [...(d.lieferrhythmen || []), r]
+    }));
+    toast('Lieferrhythmus gespeichert', 'success');
+    setRhythmusModal(false);
+    setEditRhythmus(null);
+    setRhythmusForm(RHYTHMUS_EMPTY);
+  }
+
+  // Heutiger Wochentag (0=So,1=Mo…)
+  const heuteTag = new Date().getDay();
+  const heutigeRhythmen = lieferrhythmen.filter(r => r.aktiv && r.tage.includes(heuteTag));
+  const naechsteRhythmen = lieferrhythmen.filter(r => r.aktiv && !r.tage.includes(heuteTag)).map(r => {
+    const naechster = r.tage.map(t => {
+      let d = (t - heuteTag + 7) % 7;
+      return d === 0 ? 7 : d;
+    }).sort((a, b) => a - b)[0];
+    return {
+      ...r,
+      inTagen: naechster
+    };
+  }).sort((a, b) => a.inTagen - b.inTagen);
   const vorschlaege = artikel.filter(a => getLB(lager, a.id) < a.mindestbestand).map(a => ({
     ...a,
     bestand: getLB(lager, a.id),
@@ -3524,7 +3935,464 @@ function Bestellungen({
   const offen = bestellungen.filter(b => b.status === 'Offen');
   const bestellt = bestellungen.filter(b => b.status === 'Bestellt');
   const geliefert = bestellungen.filter(b => b.status === 'Geliefert');
-  return /*#__PURE__*/React.createElement("div", null, vorschlaege.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, (() => {
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "tabs"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: `tab-btn${mainTab === 'bestellungen' ? ' active' : ''}`,
+    onClick: () => setMainTab('bestellungen')
+  }, "\uD83D\uDCCB Bestellungen ", bestellungen.length > 0 && /*#__PURE__*/React.createElement(Badge, {
+    type: "yellow"
+  }, bestellungen.length)), /*#__PURE__*/React.createElement("button", {
+    className: `tab-btn${mainTab === 'vorlagen' ? ' active' : ''}`,
+    onClick: () => setMainTab('vorlagen')
+  }, "\uD83D\uDCC4 Vorlagen ", bestellvorlagen.length > 0 && `(${bestellvorlagen.length})`), /*#__PURE__*/React.createElement("button", {
+    className: `tab-btn${mainTab === 'rhythmen' ? ' active' : ''}`,
+    onClick: () => setMainTab('rhythmen')
+  }, "\uD83D\uDDD3 Rhythmen ", heutigeRhythmen.length > 0 && /*#__PURE__*/React.createElement(Badge, {
+    type: "green"
+  }, "Heute!"))), mainTab === 'vorlagen' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary btn-lg",
+    style: {
+      width: '100%',
+      marginBottom: 14
+    },
+    onClick: () => {
+      setEditVorl(null);
+      setVorlForm(VORL_EMPTY);
+      setVorlPos({
+        artikelId: '',
+        menge: 1
+      });
+      setVorlModal(true);
+    }
+  }, "+ Neue Vorlage"), bestellvorlagen.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "empty-icon"
+  }, "\uD83D\uDCC4"), /*#__PURE__*/React.createElement("div", {
+    className: "empty-title"
+  }, "Noch keine Vorlagen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: C.textMid,
+      fontSize: 13,
+      marginTop: 6
+    }
+  }, "Erstelle Vorlagen f\xFCr wiederkehrende Bestellungen \u2013 z.B. \"Wochenlieferung Frischmarkt\"")) : bestellvorlagen.map(vorl => {
+    const lief = getL(lieferanten, Number(vorl.lieferantId));
+    return /*#__PURE__*/React.createElement("div", {
+      key: vorl.id,
+      className: "vorl-card"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "vorl-card-head"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 900,
+        fontSize: 16
+      }
+    }, vorl.name), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.textMid,
+        marginTop: 2
+      }
+    }, lief?.name || '—', " \xB7 ", vorl.positionen.length, " Position", vorl.positionen.length !== 1 ? 'en' : '')), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost btn-sm",
+      style: {
+        minHeight: 30,
+        padding: '0 8px'
+      },
+      onClick: () => {
+        setEditVorl(vorl);
+        setVorlForm({
+          name: vorl.name,
+          lieferantId: vorl.lieferantId,
+          positionen: [...vorl.positionen]
+        });
+        setVorlModal(true);
+      }
+    }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger btn-sm",
+      style: {
+        minHeight: 30,
+        padding: '0 8px'
+      },
+      onClick: () => {
+        if (window.confirm('"' + vorl.name + '" löschen?')) setData(d => ({
+          ...d,
+          bestellvorlagen: d.bestellvorlagen.filter(x => x.id !== vorl.id)
+        }));
+      }
+    }, "\uD83D\uDDD1"))), /*#__PURE__*/React.createElement("div", {
+      className: "vorl-pos-list"
+    }, vorl.positionen.map((p, i) => /*#__PURE__*/React.createElement("div", {
+      key: i,
+      className: "vorl-pos-row"
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 700
+      }
+    }, p.artikelName), /*#__PURE__*/React.createElement("span", {
+      className: "mono"
+    }, fmt(p.menge, 2), " ", p.einheit, " \xB7 ", fmtE(p.menge * p.ek))))), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginTop: 12,
+        paddingTop: 10,
+        borderTop: `1px solid ${C.border}`
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 13,
+        color: C.textMid,
+        fontWeight: 600
+      }
+    }, "Gesamt: ", fmtE(vorl.positionen.reduce((s, p) => s + p.menge * p.ek, 0))), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-primary btn-sm",
+      onClick: () => vorlageBenutzen(vorl)
+    }, "\uD83D\uDCCB Bestellung anlegen")));
+  }), vorlModal && /*#__PURE__*/React.createElement(Modal, {
+    title: editVorl ? 'Vorlage bearbeiten' : 'Neue Bestellvorlage',
+    onClose: () => {
+      setVorlModal(false);
+      setEditVorl(null);
+    },
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-primary btn-xl",
+      onClick: saveVorl
+    }, editVorl ? 'Speichern' : 'Vorlage anlegen'), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost",
+      style: {
+        width: '100%'
+      },
+      onClick: () => {
+        setVorlModal(false);
+        setEditVorl(null);
+      }
+    }, "Abbrechen"))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Vorlagenname"), /*#__PURE__*/React.createElement("input", {
+    value: vorlForm.name,
+    placeholder: "z.B. Wochenlieferung Frischmarkt",
+    onChange: e => setVorlForm(f => ({
+      ...f,
+      name: e.target.value
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Lieferant"), /*#__PURE__*/React.createElement("select", {
+    value: vorlForm.lieferantId,
+    onChange: e => setVorlForm(f => ({
+      ...f,
+      lieferantId: e.target.value
+    }))
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 w\xE4hlen \u2014"), lieferanten.map(l => /*#__PURE__*/React.createElement("option", {
+    key: l.id,
+    value: l.id
+  }, l.name)))), /*#__PURE__*/React.createElement("div", {
+    className: "divider"
+  }), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 13,
+      color: C.textMid,
+      marginBottom: 6
+    }
+  }, "POSITIONEN (", vorlForm.positionen.length, ")"), vorlForm.positionen.map((p, i) => /*#__PURE__*/React.createElement("div", {
+    key: i,
+    className: "vorl-pos-row",
+    style: {
+      marginBottom: 4
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700
+    }
+  }, p.artikelName), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "mono"
+  }, fmt(p.menge, 2), " ", p.einheit), /*#__PURE__*/React.createElement("button", {
+    className: "pos-remove",
+    onClick: () => setVorlForm(f => ({
+      ...f,
+      positionen: f.positionen.filter((_, j) => j !== i)
+    }))
+  }, "\u2715")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgBlue,
+      borderRadius: 12,
+      padding: 12,
+      border: `1.5px solid ${C.blueLight}`,
+      marginTop: 8
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      color: C.blue,
+      textTransform: 'uppercase',
+      marginBottom: 8
+    }
+  }, "Position hinzuf\xFCgen"), /*#__PURE__*/React.createElement("div", {
+    className: "form-group",
+    style: {
+      marginBottom: 8
+    }
+  }, /*#__PURE__*/React.createElement("select", {
+    value: vorlPos.artikelId,
+    onChange: e => setVorlPos(p => ({
+      ...p,
+      artikelId: e.target.value
+    }))
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 Artikel w\xE4hlen \u2014"), artikel.map(a => /*#__PURE__*/React.createElement("option", {
+    key: a.id,
+    value: a.id
+  }, a.name, " (", a.einheit, ")")))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      alignItems: 'flex-end'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement(QtyPicker, {
+    value: vorlPos.menge,
+    onChange: v => setVorlPos(p => ({
+      ...p,
+      menge: v
+    })),
+    step: 0.5,
+    min: 0.1
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: addVorlPos,
+    disabled: !vorlPos.artikelId,
+    style: {
+      flexShrink: 0
+    }
+  }, "+ Hinzuf\xFCgen"))))), mainTab === 'rhythmen' && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary btn-lg",
+    style: {
+      width: '100%',
+      marginBottom: 14
+    },
+    onClick: () => {
+      setEditRhythmus(null);
+      setRhythmusForm(RHYTHMUS_EMPTY);
+      setRhythmusModal(true);
+    }
+  }, "+ Lieferrhythmus anlegen"), heutigeRhythmen.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "alert success",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\uD83D\uDCC5"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, /*#__PURE__*/React.createElement("strong", null, "Heute Bestelltag bei:"), " ", heutigeRhythmen.map(r => getL(lieferanten, Number(r.lieferantId))?.name || '—').join(', '))), lieferrhythmen.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "empty-icon"
+  }, "\uD83D\uDDD3"), /*#__PURE__*/React.createElement("div", {
+    className: "empty-title"
+  }, "Noch keine Rhythmen"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      color: C.textMid,
+      fontSize: 13,
+      marginTop: 6
+    }
+  }, "Lege feste Bestelltage pro Lieferant fest \u2013 z.B. Montag = Frischmarkt")) : lieferrhythmen.map(r => {
+    const lief = getL(lieferanten, Number(r.lieferantId));
+    return /*#__PURE__*/React.createElement("div", {
+      key: r.id,
+      className: "vorl-card",
+      style: {
+        borderColor: r.aktiv && r.tage.includes(heuteTag) ? C.green : C.border
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "vorl-card-head"
+    }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontWeight: 900,
+        fontSize: 15
+      }
+    }, lief?.name || '—'), r.aktiv && r.tage.includes(heuteTag) && /*#__PURE__*/React.createElement(Badge, {
+      type: "green"
+    }, "Heute!"), !r.aktiv && /*#__PURE__*/React.createElement(Badge, {
+      type: "gray"
+    }, "Pausiert")), r.notiz && /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.textMid,
+        marginTop: 2
+      }
+    }, r.notiz)), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        gap: 6
+      }
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost btn-sm",
+      style: {
+        minHeight: 30,
+        padding: '0 8px'
+      },
+      onClick: () => {
+        setEditRhythmus(r);
+        setRhythmusForm({
+          lieferantId: r.lieferantId,
+          tage: r.tage,
+          notiz: r.notiz || '',
+          aktiv: r.aktiv
+        });
+        setRhythmusModal(true);
+      }
+    }, "\u270F\uFE0F"), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger btn-sm",
+      style: {
+        minHeight: 30,
+        padding: '0 8px'
+      },
+      onClick: () => {
+        if (window.confirm('Rhythmus löschen?')) setData(d => ({
+          ...d,
+          lieferrhythmen: d.lieferrhythmen.filter(x => x.id !== r.id)
+        }));
+      }
+    }, "\uD83D\uDDD1"))), /*#__PURE__*/React.createElement("div", {
+      className: "rhythmus-row",
+      style: {
+        marginTop: 8
+      }
+    }, WOCHENTAGE.map(t => /*#__PURE__*/React.createElement("div", {
+      key: t.id,
+      className: `rhythmus-dot${r.tage.includes(t.id) ? ' active' : ''}`
+    }, t.k))), !r.tage.includes(heuteTag) && (() => {
+      const n = naechsteRhythmen.find(x => x.id === r.id);
+      return n ? /*#__PURE__*/React.createElement("div", {
+        style: {
+          fontSize: 12,
+          color: C.textMid,
+          marginTop: 6
+        }
+      }, "N\xE4chster Bestelltag in ", n.inTagen, " Tag", n.inTagen !== 1 ? 'en' : '') : null;
+    })());
+  }), rhythmusModal && /*#__PURE__*/React.createElement(Modal, {
+    title: editRhythmus ? 'Rhythmus bearbeiten' : 'Neuer Lieferrhythmus',
+    onClose: () => {
+      setRhythmusModal(false);
+      setEditRhythmus(null);
+    },
+    footer: /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-primary btn-xl",
+      onClick: saveRhythmus
+    }, editRhythmus ? 'Speichern' : 'Anlegen'), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost",
+      style: {
+        width: '100%'
+      },
+      onClick: () => {
+        setRhythmusModal(false);
+        setEditRhythmus(null);
+      }
+    }, "Abbrechen"))
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Lieferant"), /*#__PURE__*/React.createElement("select", {
+    value: rhythmusForm.lieferantId,
+    onChange: e => setRhythmusForm(f => ({
+      ...f,
+      lieferantId: e.target.value
+    }))
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 w\xE4hlen \u2014"), lieferanten.map(l => /*#__PURE__*/React.createElement("option", {
+    key: l.id,
+    value: l.id
+  }, l.name)))), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Bestelltage"), /*#__PURE__*/React.createElement("div", {
+    className: "rhythmus-row",
+    style: {
+      marginTop: 6
+    }
+  }, WOCHENTAGE.map(t => /*#__PURE__*/React.createElement("div", {
+    key: t.id,
+    className: `rhythmus-dot${rhythmusForm.tage.includes(t.id) ? ' active' : ''}`,
+    onClick: () => setRhythmusForm(f => ({
+      ...f,
+      tage: f.tage.includes(t.id) ? f.tage.filter(x => x !== t.id) : [...f.tage, t.id]
+    }))
+  }, t.k)))), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Notiz"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "z.B. Nur Fleisch und Fisch",
+    value: rhythmusForm.notiz,
+    onChange: e => setRhythmusForm(f => ({
+      ...f,
+      notiz: e.target.value
+    }))
+  })), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 10,
+      padding: '10px 0'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: rhythmusForm.aktiv,
+    onChange: e => setRhythmusForm(f => ({
+      ...f,
+      aktiv: e.target.checked
+    })),
+    style: {
+      width: 20,
+      height: 20,
+      minHeight: 'auto',
+      accentColor: C.blue
+    }
+  }), /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, "Rhythmus aktiv")))), mainTab === 'bestellungen' && /*#__PURE__*/React.createElement(React.Fragment, null, vorschlaege.length > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, (() => {
     // Zeige "Alle bestellen" nur wenn noch keine offene Bestellung für diese Artikel existiert
     const bereitsBestelltIds = new Set(bestellungen.flatMap(b => b.positionen.map(p => p.artikelId)));
     const nochNichtBestellt = vorschlaege.filter(a => !bereitsBestelltIds.has(a.id));
@@ -3662,7 +4530,7 @@ function Bestellungen({
       color: C.textMid,
       marginTop: 6
     }
-  }, "Bei Unterbestand erscheint hier ein Bestellvorschlag")), archivBest.length > 0 && /*#__PURE__*/React.createElement("div", {
+  }, "Bei Unterbestand erscheint hier ein Bestellvorschlag"))), archivBest.length > 0 && /*#__PURE__*/React.createElement("div", {
     className: "card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card-head"
@@ -6343,6 +7211,1117 @@ function StornoModal({
   }, "\u2212", p.menge.toFixed(2), " ", p.einheit || '')))));
 }
 
+// ── PORTIONENPLANUNG ─────────────────────────────────────────────────────────
+function Portionenplanung({
+  data,
+  setData,
+  toast,
+  setPage
+}) {
+  const {
+    rezepturen,
+    artikel,
+    lager,
+    lieferanten,
+    bestellungen,
+    bestellvorlagen = []
+  } = data;
+  const [datum, setDatum] = useState(todayStr());
+  const [plan, setPlan] = useState({}); // {rezepturId: portionen}
+  const [showBedarf, setShowBedarf] = useState(false);
+  const [gespeicherterPlan, setGespeicherterPlan] = useState(null);
+
+  // Vorhandenen Plan für Datum laden
+  useEffect(() => {
+    const existing = (data.tagesplaene || []).find(p => p.datum === datum);
+    if (existing) {
+      setPlan(existing.plan || {});
+      setGespeicherterPlan(existing);
+    } else {
+      setPlan({});
+      setGespeicherterPlan(null);
+    }
+  }, [datum, data.tagesplaene]);
+  const geplanteRez = rezepturen.filter(r => plan[r.id] > 0);
+
+  // Warenbedarf berechnen: aggregiert über alle geplanten Rezepturen
+  const warenbedarfMap = {}; // {artikelId: {name,einheit,bedarf,bestand,fehlmenge,ek}}
+  geplanteRez.forEach(rez => {
+    rez.zutaten.forEach(z => {
+      const port = plan[rez.id] || 0;
+      const benötigt = z.menge * port;
+      if (!warenbedarfMap[z.artikelId]) {
+        const art = getA(artikel, z.artikelId);
+        warenbedarfMap[z.artikelId] = {
+          artikelId: z.artikelId,
+          name: art?.name || '?',
+          einheit: art?.einheit || '',
+          ek: art?.ek || 0,
+          bedarf: 0,
+          bestand: getLBFrei(lager, z.artikelId)
+        };
+      }
+      warenbedarfMap[z.artikelId].bedarf += benötigt;
+    });
+  });
+  const warenbedarf = Object.values(warenbedarfMap).map(w => ({
+    ...w,
+    fehlmenge: Math.max(0, w.bedarf - w.bestand),
+    fehlwert: Math.max(0, w.bedarf - w.bestand) * w.ek,
+    status: w.bestand >= w.bedarf ? 'ok' : w.bestand > 0 ? 'partial' : 'warn'
+  }));
+  const totalPortionen = Object.values(plan).reduce((s, v) => s + (v || 0), 0);
+  const totalWareneinsatz = geplanteRez.reduce((s, rez) => s + getRezKosten(rez, artikel, lager) * (plan[rez.id] || 0), 0);
+  const totalFehlwert = warenbedarf.reduce((s, w) => s + w.fehlwert, 0);
+  const fehlendeArtikel = warenbedarf.filter(w => w.fehlmenge > 0);
+  function planSpeichern() {
+    const eintrag = {
+      id: gespeicherterPlan?.id || Date.now(),
+      datum,
+      plan: {
+        ...plan
+      },
+      gespeichertAm: new Date().toISOString()
+    };
+    setData(d => ({
+      ...d,
+      tagesplaene: gespeicherterPlan ? d.tagesplaene.map(p => p.datum === datum ? eintrag : p) : [eintrag, ...(d.tagesplaene || [])]
+    }));
+    toast('Tagesplan für ' + datum + ' gespeichert', 'success');
+  }
+  function bestellungAusFehlmenge() {
+    if (!fehlendeArtikel.length) return;
+    // Gruppiere nach bestem Lieferant (Ampel)
+    const byLief = {};
+    fehlendeArtikel.forEach(w => {
+      const bestLiefId = getBestLieferantId(w.artikelId, getA(artikel, w.artikelId)?.lieferantId);
+      const lief = getL(lieferanten, bestLiefId);
+      if (!byLief[bestLiefId]) byLief[bestLiefId] = {
+        lieferantId: bestLiefId,
+        lieferantName: lief?.name || '',
+        lieferantEmail: lief?.email || '',
+        lieferantTelefon: lief?.telefon || '',
+        positionen: []
+      };
+      // Auf Gebindegröße aufrunden
+      const kat = PCM_KATALOG.find(k => k.artikelId === w.artikelId && k.lieferantId === bestLiefId);
+      let menge = w.fehlmenge * 1.2; // 20% Puffer
+      if (kat) {
+        const bg = kat.gebinde.reduce((b, g) => g.ek / g.menge < b.ek / b.menge ? g : b, kat.gebinde[0]);
+        menge = Math.ceil(w.fehlmenge / bg.menge) * bg.menge;
+      }
+      byLief[bestLiefId].positionen.push({
+        artikelId: w.artikelId,
+        artikelName: w.name,
+        menge: parseFloat(menge.toFixed(3)),
+        ek: w.ek,
+        einheit: w.einheit
+      });
+    });
+    const newBest = Object.values(byLief).map(lief => ({
+      id: Date.now() + Math.random(),
+      ...lief,
+      datum: todayStr(),
+      status: 'Offen',
+      quelle: 'Portionenplanung ' + datum,
+      belegnr: 'BE-' + Math.random().toString(36).slice(2, 7).toUpperCase()
+    }));
+    setData(d => ({
+      ...d,
+      bestellungen: [...newBest, ...d.bestellungen]
+    }));
+    toast(newBest.length + ' Bestellung(en) für Fehlmengen angelegt', 'success');
+    setPage('bestellungen');
+  }
+  function alsVorlage() {
+    if (!geplanteRez.length) {
+      toast('Keine Rezepturen geplant', 'warn');
+      return;
+    }
+    // Warenbedarf als Bestellvorlage speichern
+    const vorlagenPos = warenbedarf.map(w => ({
+      artikelId: w.artikelId,
+      artikelName: w.name,
+      menge: parseFloat(w.bedarf.toFixed(3)),
+      einheit: w.einheit,
+      ek: w.ek
+    }));
+    const v = {
+      id: Date.now(),
+      name: `Plan ${datum} (${totalPortionen} Port.)`,
+      lieferantId: '',
+      positionen: vorlagenPos
+    };
+    setData(d => ({
+      ...d,
+      bestellvorlagen: [...(d.bestellvorlagen || []), v]
+    }));
+    toast('Warenbedarf als Bestellvorlage gespeichert', 'success');
+  }
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-title"
+  }, "Portionenplanung"), /*#__PURE__*/React.createElement("div", {
+    className: "sec-sub"
+  }, "G\xE4steanzahl planen \u2192 Warenbedarf berechnen")), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: planSpeichern,
+    disabled: totalPortionen === 0
+  }, "\uD83D\uDCBE Speichern")), /*#__PURE__*/React.createElement("div", {
+    className: "form-group",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Planungstag"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: datum,
+    onChange: e => setDatum(e.target.value),
+    style: {
+      maxWidth: 200
+    }
+  })), gespeicherterPlan && /*#__PURE__*/React.createElement("div", {
+    className: "alert info",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\uD83D\uDCBE"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, "Plan f\xFCr ", datum, " gespeichert am ", new Date(gespeicherterPlan.gespeichertAm).toLocaleString('de-DE'))), totalPortionen > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "kpi-grid",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card blue"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83C\uDF7D"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, totalPortionen), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Portionen gesamt")), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card green"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83D\uDCB0"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, fmtE(totalWareneinsatz)), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Wareneinsatz geplant")), /*#__PURE__*/React.createElement("div", {
+    className: `kpi-card ${fehlendeArtikel.length > 0 ? 'red' : 'green'}`
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, fehlendeArtikel.length > 0 ? '⚠' : '✅'), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, fehlendeArtikel.length), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Fehlende Artikel"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, fmtE(totalFehlwert))), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card blue"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, geplanteRez.length), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Gerichte"))), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDC68\u200D\uD83C\uDF73 Portionen planen"), totalPortionen > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: () => setPlan({})
+  }, "Zur\xFCcksetzen")), rezepturen.map(rez => {
+    const maxPort = getMaxPortionen(rez, lager);
+    const geplant = plan[rez.id] || 0;
+    const ueber = geplant > maxPort && maxPort >= 0;
+    return /*#__PURE__*/React.createElement("div", {
+      key: rez.id,
+      className: "plan-rez-row"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "plan-rez-name"
+    }, rez.name, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 11,
+        color: C.textMid,
+        fontWeight: 600,
+        marginTop: 2
+      }
+    }, rez.kategorie, " \xB7 Max ", maxPort, " Port. verf\xFCgbar \xB7 ", fmtE(getRezKosten(rez, artikel, lager)), "/Port.")), /*#__PURE__*/React.createElement("div", {
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        flexShrink: 0
+      }
+    }, ueber && /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 10,
+        color: C.red,
+        fontWeight: 800
+      }
+    }, "\u26A0 Fehlbestand"), /*#__PURE__*/React.createElement("button", {
+      style: {
+        width: 34,
+        height: 34,
+        background: geplant > 0 ? C.blueLight : C.bg,
+        border: `1.5px solid ${geplant > 0 ? C.blue : C.border}`,
+        borderRadius: 8,
+        fontSize: 18,
+        fontWeight: 700,
+        cursor: 'pointer',
+        color: C.blue,
+        fontFamily: 'Nunito'
+      },
+      onClick: () => setPlan(p => ({
+        ...p,
+        [rez.id]: Math.max(0, (p[rez.id] || 0) - 1)
+      }))
+    }, "\u2212"), /*#__PURE__*/React.createElement("div", {
+      style: {
+        minWidth: 36,
+        textAlign: 'center',
+        fontFamily: 'JetBrains Mono',
+        fontSize: 16,
+        fontWeight: 800,
+        color: geplant > 0 ? C.blue : C.textLight
+      }
+    }, geplant), /*#__PURE__*/React.createElement("button", {
+      style: {
+        width: 34,
+        height: 34,
+        background: geplant > 0 ? C.blue : C.bg,
+        border: `1.5px solid ${geplant > 0 ? C.blue : C.border}`,
+        borderRadius: 8,
+        fontSize: 18,
+        fontWeight: 700,
+        cursor: 'pointer',
+        color: geplant > 0 ? 'white' : C.blue,
+        fontFamily: 'Nunito'
+      },
+      onClick: () => setPlan(p => ({
+        ...p,
+        [rez.id]: (p[rez.id] || 0) + 1
+      }))
+    }, "+")));
+  })), totalPortionen > 0 && /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDCE6 Warenbedarf"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 6
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: alsVorlage
+  }, "\uD83D\uDCC4 Als Vorlage"), fehlendeArtikel.length > 0 && /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary btn-sm",
+    onClick: bestellungAusFehlmenge
+  }, "\uD83D\uDED2 Fehlmengen bestellen"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '4px 0'
+    }
+  }, warenbedarf.sort((a, b) => b.bedarf - a.bedarf).map(w => /*#__PURE__*/React.createElement("div", {
+    key: w.artikelId,
+    className: `plan-bedarf-row ${w.status}`,
+    style: {
+      margin: '4px 12px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 700,
+      fontSize: 14
+    }
+  }, w.name), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 12,
+      color: C.textMid,
+      marginTop: 1
+    }
+  }, "Bedarf: ", /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontWeight: 700
+    }
+  }, fmt(w.bedarf, 3), " ", w.einheit), ' · ', "Bestand: ", /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontWeight: 700,
+      color: w.status === 'ok' ? C.green : C.red
+    }
+  }, fmt(w.bestand, 2), " ", w.einheit), w.fehlmenge > 0 && /*#__PURE__*/React.createElement("span", {
+    style: {
+      color: C.red,
+      fontWeight: 800
+    }
+  }, " \xB7 Fehlt: ", fmt(w.fehlmenge, 3), " ", w.einheit, " (", fmtE(w.fehlwert), ")"))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 18,
+      flexShrink: 0
+    }
+  }, w.status === 'ok' ? '✅' : w.status === 'partial' ? '⚠️' : '❌')))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '12px 14px',
+      borderTop: `1.5px solid ${C.border}`,
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontWeight: 800,
+      color: C.textMid
+    }
+  }, "Wareneinsatz gesamt:"), /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      fontWeight: 800,
+      color: C.blue,
+      fontSize: 16
+    }
+  }, fmtE(totalWareneinsatz)))), /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83C\uDF7D Plan-\xDCbersicht")), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Gericht"), /*#__PURE__*/React.createElement("th", null, "Portionen"), /*#__PURE__*/React.createElement("th", null, "Wareneinsatz"), /*#__PURE__*/React.createElement("th", null, "Umsatz (VK)"), /*#__PURE__*/React.createElement("th", null, "DB"))), /*#__PURE__*/React.createElement("tbody", null, geplanteRez.map(rez => {
+    const port = plan[rez.id] || 0;
+    const we = getRezKosten(rez, artikel, lager) * port;
+    const vk = rez.vkPreis * port;
+    const db = vk - we;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: rez.id
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 700
+      }
+    }, rez.name), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, port), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(we)), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(vk)), /*#__PURE__*/React.createElement("td", {
+      className: "mono",
+      style: {
+        color: db > 0 ? C.green : C.red,
+        fontWeight: 800
+      }
+    }, fmtE(db)));
+  }), /*#__PURE__*/React.createElement("tr", {
+    style: {
+      background: C.bg,
+      fontWeight: 800
+    }
+  }, /*#__PURE__*/React.createElement("td", null, "Gesamt"), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, totalPortionen), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(totalWareneinsatz)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(geplanteRez.reduce((s, r) => s + r.vkPreis * (plan[r.id] || 0), 0))), /*#__PURE__*/React.createElement("td", {
+    className: "mono",
+    style: {
+      color: C.green,
+      fontWeight: 800
+    }
+  }, fmtE(geplanteRez.reduce((s, r) => s + (r.vkPreis - getRezKosten(r, artikel, lager)) * (plan[r.id] || 0), 0))))))))), (data.tagesplaene || []).length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginTop: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDDC2 Gespeicherte Pl\xE4ne"), /*#__PURE__*/React.createElement(Badge, {
+    type: "gray"
+  }, (data.tagesplaene || []).length)), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Datum"), /*#__PURE__*/React.createElement("th", null, "Gerichte"), /*#__PURE__*/React.createElement("th", null, "Portionen"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, (data.tagesplaene || []).slice(0, 10).map(p => {
+    const total = Object.values(p.plan || {}).reduce((s, v) => s + (v || 0), 0);
+    const gerichte = Object.keys(p.plan || {}).filter(k => (p.plan[k] || 0) > 0).length;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: p.id
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 700
+      }
+    }, p.datum), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, gerichte), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, total), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-ghost btn-sm",
+      style: {
+        minHeight: 28,
+        padding: '0 8px'
+      },
+      onClick: () => setDatum(p.datum)
+    }, "Laden")));
+  }))))));
+}
+
+// ── SCHNELLERFASSUNG ─────────────────────────────────────────────────────────
+const VB_TYPEN = [{
+  id: 'entnahme',
+  icon: '🍽',
+  label: 'Direktentnahme',
+  sub: 'Beilage, Probeessen…',
+  grund: 'Direktentnahme'
+}, {
+  id: 'personal',
+  icon: '👨‍🍳',
+  label: 'Personalessen',
+  sub: 'Mitarbeiter-Verpflegung',
+  grund: 'Personalessen'
+}, {
+  id: 'verderb',
+  icon: '🗑',
+  label: 'Verderb/Schwund',
+  sub: 'Qualitätsmangel, Bruch',
+  grund: 'Verderb/Schwund'
+}, {
+  id: 'probe',
+  icon: '🧪',
+  label: 'Probekochen',
+  sub: 'Rezepturtests, Verkostung',
+  grund: 'Probekochen'
+}, {
+  id: 'rueckgabe',
+  icon: '↩️',
+  label: 'Rückgabe',
+  sub: 'An Lieferant zurück',
+  grund: 'Rückgabe an Lieferant'
+}, {
+  id: 'sonstiges',
+  icon: '📝',
+  label: 'Sonstiges',
+  sub: 'Freie Eingabe',
+  grund: ''
+}];
+function Schnellerfassung({
+  data,
+  setData,
+  toast
+}) {
+  const {
+    artikel,
+    lager
+  } = data;
+  const [typ, setTyp] = useState(null);
+  const [artId, setArtId] = useState('');
+  const [menge, setMenge] = useState(1);
+  const [grund, setGrund] = useState('');
+  const [datum, setDatum] = useState(todayStr());
+  const [fifo, setFifo] = useState(true); // FIFO-Buchung oder manuelle Charge
+  const [manuelleCharge, setManuelleCharge] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const art = artId ? getA(artikel, Number(artId)) : null;
+  const freieChargen = art ? [...lager].filter(l => l.artikelId === art.id && (l.artikelStatus || 'frei') === 'frei' && daysDiff(l.mhd) >= 0).sort((a, b) => new Date(a.mhd) - new Date(b.mhd)) : [];
+  const gesamtFrei = freieChargen.reduce((s, l) => s + l.menge, 0);
+  const wert = menge * (freieChargen[0]?.ek || art?.ek || 0);
+
+  // Welche Chargen werden bei FIFO verbraucht
+  const fifoVorschau = (() => {
+    if (!art || menge <= 0) return [];
+    let rest = menge;
+    const result = [];
+    for (const ch of freieChargen) {
+      if (rest <= 0) break;
+      const take = Math.min(ch.menge, rest);
+      result.push({
+        ...ch,
+        take,
+        lagerortName: getLOName(data.lagerorte || [], ch.lagerortId, ch.lagerort)
+      });
+      rest -= take;
+    }
+    return result;
+  })();
+  function buchen() {
+    if (!art || menge <= 0) {
+      toast('Artikel und Menge erforderlich', 'warn');
+      return;
+    }
+    if (!typ) {
+      toast('Bitte Verbrauchsart wählen', 'warn');
+      return;
+    }
+    const grundFinal = typ.id === 'sonstiges' ? grund.trim() : typ.grund + (grund.trim() ? ` (${grund.trim()})` : '');
+    if (!grundFinal) {
+      toast('Bitte Grund eingeben', 'warn');
+      return;
+    }
+    if (menge > gesamtFrei && gesamtFrei > 0) {
+      if (!window.confirm(`Nur ${fmt(gesamtFrei, 2)} ${art.einheit} verfügbar. Trotzdem ${fmt(menge, 2)} buchen?`)) return;
+    }
+    // FIFO-Abbuchung aus freien Chargen
+    let rest = menge;
+    setData(d => {
+      let newLager = [...d.lager];
+      const newVerbrauch = [];
+      const sortierteFrei = [...d.lager].filter(l => l.artikelId === art.id && (l.artikelStatus || 'frei') === 'frei' && daysDiff(l.mhd) >= 0).sort((a, b) => new Date(a.mhd) - new Date(b.mhd));
+      let restMenge = menge;
+      sortierteFrei.forEach(ch => {
+        if (restMenge <= 0) return;
+        const take = Math.min(ch.menge, restMenge);
+        newLager = newLager.map(l => l.id === ch.id ? {
+          ...l,
+          menge: l.menge - take
+        } : l);
+        restMenge -= take;
+      });
+      newLager = newLager.filter(l => l.menge > 0.0001);
+      newVerbrauch.push({
+        id: Date.now() + Math.random(),
+        datum,
+        artikelId: art.id,
+        menge,
+        grund: grundFinal,
+        typ: typ.id
+      });
+      return {
+        ...d,
+        lager: newLager,
+        verbrauch: [...d.verbrauch, ...newVerbrauch]
+      };
+    });
+    const msg = `${fmt(menge, 2)} ${art.einheit} ${art.name} gebucht (${grundFinal})`;
+    toast(msg, 'success');
+    setSuccessMsg(msg);
+    setTimeout(() => setSuccessMsg(''), 4000);
+    // Reset für nächste Buchung (Typ bleibt)
+    setArtId('');
+    setMenge(1);
+    setGrund('');
+  }
+  const heute = todayStr();
+  const heuteVb = data.verbrauch.filter(v => v.datum === heute && v.typ);
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-title"
+  }, "Schnellerfassung"), /*#__PURE__*/React.createElement("div", {
+    className: "sec-sub"
+  }, "Verbrauch ohne Rezeptur direkt buchen"))), successMsg && /*#__PURE__*/React.createElement("div", {
+    className: "alert success",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\u2705"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, successMsg)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 800,
+      fontSize: 12,
+      color: C.textMid,
+      textTransform: 'uppercase',
+      letterSpacing: '.5px',
+      marginBottom: 8
+    }
+  }, "Verbrauchsart"), /*#__PURE__*/React.createElement("div", {
+    className: "vb-typ-grid"
+  }, VB_TYPEN.map(t => /*#__PURE__*/React.createElement("div", {
+    key: t.id,
+    className: `vb-typ-card${typ?.id === t.id ? ' active' : ''}`,
+    onClick: () => {
+      setTyp(t);
+      if (t.id !== 'sonstiges') setGrund('');
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "vb-typ-icon"
+  }, t.icon), /*#__PURE__*/React.createElement("div", {
+    className: "vb-typ-label"
+  }, t.label), /*#__PURE__*/React.createElement("div", {
+    className: "vb-typ-sub"
+  }, t.sub)))), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      padding: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 12
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Artikel"), /*#__PURE__*/React.createElement("select", {
+    value: artId,
+    onChange: e => {
+      setArtId(e.target.value);
+      setMenge(1);
+    }
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "\u2014 Artikel w\xE4hlen \u2014"), [...artikel].sort((a, b) => a.name.localeCompare(b.name)).map(a => {
+    const b = getLBFrei(lager, a.id);
+    return /*#__PURE__*/React.createElement("option", {
+      key: a.id,
+      value: a.id
+    }, a.name, " (", fmt(b, 2), " ", a.einheit, " frei)");
+  }))), art && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bg,
+      borderRadius: 10,
+      padding: '8px 12px',
+      border: `1px solid ${C.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      fontSize: 13,
+      fontWeight: 700
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Freier Bestand:"), /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      color: gesamtFrei > 0 ? C.green : C.red
+    }
+  }, fmt(gesamtFrei, 2), " ", art.einheit)), freieChargen.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      color: C.textMid,
+      marginTop: 3
+    }
+  }, "N\xE4chste Charge: ", freieChargen[0].charge, " \xB7 MHD: ", freieChargen[0].mhd)), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label req"
+  }, "Menge (", art?.einheit || 'Einheit', ")"), /*#__PURE__*/React.createElement(QtyPicker, {
+    value: menge,
+    onChange: setMenge,
+    step: art?.einheit === 'kg' || art?.einheit === 'l' ? 0.1 : 1,
+    min: 0.1
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, "Datum"), /*#__PURE__*/React.createElement("input", {
+    type: "date",
+    value: datum,
+    onChange: e => setDatum(e.target.value)
+  })), /*#__PURE__*/React.createElement("div", {
+    className: "form-group"
+  }, /*#__PURE__*/React.createElement("label", {
+    className: "form-label"
+  }, typ?.id === 'sonstiges' ? 'Grund (Pflicht)' : 'Notiz (optional)'), /*#__PURE__*/React.createElement("input", {
+    placeholder: typ?.id === 'sonstiges' ? 'z.B. Schülergruppe, Veranstaltung…' : 'z.B. Personalessen Mittagschicht',
+    value: grund,
+    onChange: e => setGrund(e.target.value)
+  })), art && menge > 0 && fifoVorschau.length > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      background: C.bgBlue,
+      borderRadius: 10,
+      padding: '10px 12px',
+      border: `1.5px solid ${C.blueLight}`
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 11,
+      fontWeight: 800,
+      color: C.blue,
+      textTransform: 'uppercase',
+      marginBottom: 6
+    }
+  }, "FIFO-Abbuchung Vorschau"), fifoVorschau.map((ch, i) => /*#__PURE__*/React.createElement("div", {
+    key: ch.id,
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      fontSize: 12,
+      fontWeight: 600,
+      padding: '3px 0',
+      borderBottom: i < fifoVorschau.length - 1 ? `1px solid ${C.border}` : 'none'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, ch.charge, " \xB7 MHD: ", ch.mhd), /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      color: C.blue
+    }
+  }, fmt(ch.take, 3), " ", art.einheit))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      marginTop: 6,
+      paddingTop: 6,
+      borderTop: `1.5px solid ${C.border}`,
+      fontWeight: 800,
+      fontSize: 13
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Warenwert:"), /*#__PURE__*/React.createElement("span", {
+    className: "mono",
+    style: {
+      color: C.blue
+    }
+  }, fmtE(wert)))), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary btn-xl",
+    onClick: buchen,
+    disabled: !art || !typ || menge <= 0
+  }, typ?.icon || '✅', " ", menge > 0 && art ? `${fmt(menge, 2)} ${art.einheit} ${art.name} buchen` : 'Verbrauch buchen'))), heuteVb.length > 0 && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDCCB Heute erfasst"), /*#__PURE__*/React.createElement(Badge, {
+    type: "blue"
+  }, heuteVb.length)), heuteVb.slice(0, 10).map(v => {
+    const a = getA(artikel, v.artikelId);
+    const vbTyp = VB_TYPEN.find(t => t.id === v.typ);
+    return /*#__PURE__*/React.createElement("div", {
+      key: v.id,
+      className: "vb-history-row"
+    }, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 18
+      }
+    }, vbTyp?.icon || '📝'), /*#__PURE__*/React.createElement("div", {
+      style: {
+        flex: 1
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontWeight: 700,
+        fontSize: 14
+      }
+    }, a?.name || '?'), /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 12,
+        color: C.textMid
+      }
+    }, v.grund)), /*#__PURE__*/React.createElement("div", {
+      className: "mono",
+      style: {
+        fontSize: 13,
+        fontWeight: 700,
+        color: C.red
+      }
+    }, "\u2212", fmt(v.menge, 2), " ", a?.einheit));
+  })));
+}
+
+// ── KALKULATION ──────────────────────────────────────────────────────────────
+function Kalkulation({
+  data,
+  toast
+}) {
+  const {
+    rezepturen,
+    artikel,
+    produktionsLog = []
+  } = data;
+  const [selectedRezId, setSelectedRezId] = useState(null);
+  const [zeitraum, setZeitraum] = useState(30); // Tage
+
+  // Nur Rezepturen mit Produktionslog anzeigen
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - zeitraum);
+  const cutoffStr = cutoff.toISOString().slice(0, 10);
+  const gefilterterLog = produktionsLog.filter(l => l.datum >= cutoffStr);
+  const rezMitLog = [...new Set(gefilterterLog.map(l => l.rezepturId))].map(id => getSollIst(id, gefilterterLog, rezepturen, artikel)).filter(Boolean).sort((a, b) => Math.abs(b.totalAbw) - Math.abs(a.totalAbw)); // größte Abweichung oben
+
+  const selectedDetail = selectedRezId ? rezMitLog.find(r => r.rezepturId === selectedRezId) : null;
+
+  // Gesamtübersicht
+  const gesamtSoll = rezMitLog.reduce((s, r) => s + r.totalSoll, 0);
+  const gesamtIst = rezMitLog.reduce((s, r) => s + r.totalIst, 0);
+  const gesamtAbw = gesamtIst - gesamtSoll;
+  function exportKalkCSV() {
+    const rows = [['Rezeptur', 'Produktionen', 'Portionen', 'Soll/Port.', 'Ist/Port.', 'Abw/Port.', 'Abw%', 'Soll gesamt', 'Ist gesamt', 'Abw gesamt']];
+    rezMitLog.forEach(r => rows.push([r.rezepturName, r.produktionenCount, r.totalPortionen, r.sollProPort.toFixed(2), r.istProPort.toFixed(2), r.abwProPort.toFixed(2), r.abwProzent.toFixed(1) + '%', r.totalSoll.toFixed(2), r.totalIst.toFixed(2), r.totalAbw.toFixed(2)]));
+    const csv = rows.map(r => r.map(v => '"' + v + '"').join(';')).join('\n');
+    const blob = new Blob(['﻿' + csv], {
+      type: 'text/csv;charset=utf-8'
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `kalkulation-${todayStr()}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('CSV exportiert', 'success');
+  }
+  return /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-head"
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "sec-title"
+  }, "Soll/Ist Kalkulation"), /*#__PURE__*/React.createElement("div", {
+    className: "sec-sub"
+  }, "Geplanter vs. tats\xE4chlicher Wareneinsatz pro Rezeptur")), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost btn-sm",
+    onClick: exportKalkCSV,
+    disabled: rezMitLog.length === 0
+  }, "\uD83D\uDCCA CSV")), /*#__PURE__*/React.createElement("div", {
+    className: "tabs",
+    style: {
+      marginBottom: 14
+    }
+  }, [[7, '7 Tage'], [14, '14 Tage'], [30, '30 Tage'], [90, '90 Tage']].map(([t, l]) => /*#__PURE__*/React.createElement("button", {
+    key: t,
+    className: `tab-btn${zeitraum === t ? ' active' : ''}`,
+    onClick: () => {
+      setZeitraum(t);
+      setSelectedRezId(null);
+    }
+  }, l))), rezMitLog.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "empty-icon"
+  }, "\uD83D\uDCC8"), /*#__PURE__*/React.createElement("div", {
+    className: "empty-title"
+  }, "Noch keine Produktionsdaten"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 13,
+      color: C.textMid,
+      marginTop: 6
+    }
+  }, "Sobald Rezepturen produziert werden, erscheint hier die Soll/Ist-Auswertung")) : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-grid",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card blue"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83D\uDCCB"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, rezMitLog.length), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Rezepturen"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, gefilterterLog.length, " Produktionen")), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card blue"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83C\uDFAF"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, fmtE(gesamtSoll)), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Soll gesamt")), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-card blue"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, "\uD83D\uDCE6"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val"
+  }, fmtE(gesamtIst)), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Ist gesamt")), /*#__PURE__*/React.createElement("div", {
+    className: `kpi-card ${gesamtAbw > 0 ? 'red' : 'green'}`
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "kpi-icon"
+  }, gesamtAbw > 0 ? '📈' : '📉'), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-val",
+    style: {
+      color: gesamtAbw > 0 ? C.red : C.green
+    }
+  }, gesamtAbw > 0 ? '+' : '', fmtE(gesamtAbw)), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-lbl"
+  }, "Abweichung"), /*#__PURE__*/React.createElement("div", {
+    className: "kpi-sub"
+  }, gesamtSoll > 0 ? (gesamtAbw / gesamtSoll * 100).toFixed(1) + '%' : ''))), /*#__PURE__*/React.createElement("div", {
+    className: "card",
+    style: {
+      marginBottom: 14
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDCCB Alle Rezepturen")), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Rezeptur"), /*#__PURE__*/React.createElement("th", null, "Prod."), /*#__PURE__*/React.createElement("th", null, "Port."), /*#__PURE__*/React.createElement("th", null, "Soll/Port."), /*#__PURE__*/React.createElement("th", null, "Ist/Port."), /*#__PURE__*/React.createElement("th", null, "Abw/Port."), /*#__PURE__*/React.createElement("th", null, "Abw%"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, rezMitLog.map(r => {
+    const abwPos = r.abwProPort < 0;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: r.rezepturId,
+      style: {
+        cursor: 'pointer',
+        background: selectedRezId === r.rezepturId ? C.bgBlue : ''
+      },
+      onClick: () => setSelectedRezId(selectedRezId === r.rezepturId ? null : r.rezepturId)
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 800
+      }
+    }, r.rezepturName), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, r.produktionenCount), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, r.totalPortionen), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(r.sollProPort)), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(r.istProPort)), /*#__PURE__*/React.createElement("td", {
+      className: `mono ${abwPos ? 'abw-pos' : 'abw-neg'}`
+    }, r.abwProPort > 0 ? '+' : '', fmtE(r.abwProPort)), /*#__PURE__*/React.createElement("td", {
+      className: abwPos ? 'abw-pos' : Math.abs(r.abwProzent) > 5 ? 'abw-neg' : 'abw-null'
+    }, r.abwProzent > 0 ? '+' : '', r.abwProzent.toFixed(1), "%"), /*#__PURE__*/React.createElement("td", {
+      style: {
+        color: C.blue,
+        fontSize: 12
+      }
+    }, selectedRezId === r.rezepturId ? '▲' : '▼'));
+  }))))), selectedDetail && /*#__PURE__*/React.createElement("div", {
+    className: "card"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "card-head"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "card-title"
+  }, "\uD83D\uDD0D ", selectedDetail.rezepturName, " \u2013 Zutatendetail"), /*#__PURE__*/React.createElement(Badge, {
+    type: selectedDetail.totalAbw <= 0 ? 'green' : 'red'
+  }, selectedDetail.totalAbw > 0 ? '+' : '', fmtE(selectedDetail.totalAbw))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '0 0 8px'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 20,
+      padding: '10px 14px',
+      background: C.bg,
+      borderBottom: `1px solid ${C.border}`
+    }
+  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: C.textLight,
+      textTransform: 'uppercase'
+    }
+  }, "Soll/Port."), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontWeight: 800,
+      color: C.blue
+    }
+  }, fmtE(selectedDetail.sollProPort))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: C.textLight,
+      textTransform: 'uppercase'
+    }
+  }, "Ist/Port."), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontWeight: 800
+    }
+  }, fmtE(selectedDetail.istProPort))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: C.textLight,
+      textTransform: 'uppercase'
+    }
+  }, "Abweichung"), /*#__PURE__*/React.createElement("div", {
+    className: `mono ${selectedDetail.abwProPort <= 0 ? 'abw-pos' : 'abw-neg'}`,
+    style: {
+      fontWeight: 800
+    }
+  }, selectedDetail.abwProPort > 0 ? '+' : '', fmtE(selectedDetail.abwProPort), " (", selectedDetail.abwProzent.toFixed(1), "%)")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontSize: 10,
+      fontWeight: 800,
+      color: C.textLight,
+      textTransform: 'uppercase'
+    }
+  }, "Produktionen"), /*#__PURE__*/React.createElement("div", {
+    className: "mono",
+    style: {
+      fontWeight: 800
+    }
+  }, selectedDetail.produktionenCount, " \xD7 ", selectedDetail.totalPortionen, " Port."))), /*#__PURE__*/React.createElement("div", {
+    className: "tbl-scroll"
+  }, /*#__PURE__*/React.createElement("table", {
+    className: "tbl"
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Zutat"), /*#__PURE__*/React.createElement("th", null, "Soll Menge"), /*#__PURE__*/React.createElement("th", null, "Ist Menge"), /*#__PURE__*/React.createElement("th", null, "Abw. Menge"), /*#__PURE__*/React.createElement("th", null, "Soll Wert"), /*#__PURE__*/React.createElement("th", null, "Ist Wert"), /*#__PURE__*/React.createElement("th", null, "Abw. Wert"))), /*#__PURE__*/React.createElement("tbody", null, selectedDetail.zutatenDetail.map(z => {
+    const abwPos = z.abwMenge <= 0;
+    return /*#__PURE__*/React.createElement("tr", {
+      key: z.artikelId
+    }, /*#__PURE__*/React.createElement("td", {
+      style: {
+        fontWeight: 700
+      }
+    }, z.name), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmt(z.sollMenge, 3), " ", z.einheit), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmt(z.istMenge, 3), " ", z.einheit), /*#__PURE__*/React.createElement("td", {
+      className: `mono ${abwPos ? 'abw-pos' : 'abw-neg'}`
+    }, z.abwMenge > 0 ? '+' : '', fmt(z.abwMenge, 3), " ", z.einheit), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(z.sollWert)), /*#__PURE__*/React.createElement("td", {
+      className: "mono"
+    }, fmtE(z.istWert)), /*#__PURE__*/React.createElement("td", {
+      className: `mono ${z.abwWert <= 0 ? 'abw-pos' : 'abw-neg'}`
+    }, z.abwWert > 0 ? '+' : '', fmtE(z.abwWert)));
+  })), /*#__PURE__*/React.createElement("tfoot", null, /*#__PURE__*/React.createElement("tr", {
+    style: {
+      background: C.bg,
+      fontWeight: 800
+    }
+  }, /*#__PURE__*/React.createElement("td", {
+    style: {
+      fontWeight: 800
+    }
+  }, "Gesamt"), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(selectedDetail.totalSoll / selectedDetail.totalPortionen), "/Port."), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(selectedDetail.totalIst / selectedDetail.totalPortionen), "/Port."), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(selectedDetail.totalSoll)), /*#__PURE__*/React.createElement("td", {
+    className: "mono"
+  }, fmtE(selectedDetail.totalIst)), /*#__PURE__*/React.createElement("td", {
+    className: `mono ${selectedDetail.totalAbw <= 0 ? 'abw-pos' : 'abw-neg'}`
+  }, selectedDetail.totalAbw > 0 ? '+' : '', fmtE(selectedDetail.totalAbw)))))))), rezMitLog.some(r => Math.abs(r.abwProzent) > 10) && /*#__PURE__*/React.createElement("div", {
+    className: "alert warn"
+  }, /*#__PURE__*/React.createElement("span", {
+    className: "alert-icon"
+  }, "\u26A0"), /*#__PURE__*/React.createElement("div", {
+    className: "alert-text"
+  }, /*#__PURE__*/React.createElement("strong", null, "Auff\xE4llige Abweichungen (", '>', "10%):"), ' ', rezMitLog.filter(r => Math.abs(r.abwProzent) > 10).map(r => `${r.rezepturName} (${r.abwProzent > 0 ? '+' : ''}${r.abwProzent.toFixed(1)}%)`).join(', '), ' ', "\u2013 Rezeptur oder Portionierung pr\xFCfen."))));
+}
+
 // ── NAV + APP ─────────────────────────────────────────────────────────────────
 const PAGES = [{
   id: 'dashboard',
@@ -6441,7 +8420,10 @@ function App() {
         tagesabschluesse: (data.tagesabschluesse || []).slice(0, 365),
         stornoProtokoll: (data.stornoProtokoll || []).slice(0, 500),
         ausbuchungsLog: (data.ausbuchungsLog || []).slice(0, 1000),
-        produktionsLog: (data.produktionsLog || []).slice(0, 500)
+        produktionsLog: (data.produktionsLog || []).slice(0, 500),
+        bestellvorlagen: data.bestellvorlagen || [],
+        lieferrhythmen: data.lieferrhythmen || [],
+        tagesplaene: (data.tagesplaene || []).slice(0, 90)
       };
       localStorage.setItem('menumetric-v1', JSON.stringify(trimmedData));
     } catch {}
@@ -6498,6 +8480,18 @@ function App() {
     data: data,
     setData: setData,
     toast: addToast
+  }), page === 'planung' && /*#__PURE__*/React.createElement(Portionenplanung, {
+    data: data,
+    setData: setData,
+    toast: addToast,
+    setPage: setPage
+  }), page === 'schnell' && /*#__PURE__*/React.createElement(Schnellerfassung, {
+    data: data,
+    setData: setData,
+    toast: addToast
+  }), page === 'kalkulation' && /*#__PURE__*/React.createElement(Kalkulation, {
+    data: data,
+    toast: addToast
   }), page === 'export' && /*#__PURE__*/React.createElement(ExportBackup, {
     data: data,
     setData: setData,
@@ -6540,6 +8534,18 @@ function App() {
     id: 'tagesabschluss',
     label: 'Abschluss',
     icon: '✅'
+  }, {
+    id: 'schnell',
+    label: 'Schnellbuchung',
+    icon: '⚡'
+  }, {
+    id: 'planung',
+    label: 'Planung',
+    icon: '📅'
+  }, {
+    id: 'kalkulation',
+    label: 'Kalkulation',
+    icon: '📈'
   }, {
     id: 'export',
     label: 'Export',
@@ -6593,15 +8599,15 @@ function App() {
   }, mhdAlarm), /*#__PURE__*/React.createElement("span", {
     className: "bn-icon"
   }, p.icon), p.label)), /*#__PURE__*/React.createElement("button", {
-    className: `bn-item${['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'export'].includes(page) ? ' active' : ''}`,
+    className: `bn-item${['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'schnell', 'kalkulation', 'planung', 'export'].includes(page) ? ' active' : ''}`,
     onClick: () => setShowMehr(m => !m)
-  }, (unterMindest > 0 || offeneBest > 0) && !['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'export'].includes(page) && /*#__PURE__*/React.createElement("span", {
+  }, (unterMindest > 0 || offeneBest > 0) && !['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'schnell', 'kalkulation', 'planung', 'export'].includes(page) && /*#__PURE__*/React.createElement("span", {
     className: "bn-badge",
     style: {
       background: C.orange
     }
   }, offeneBest || unterMindest), /*#__PURE__*/React.createElement("span", {
     className: "bn-icon"
-  }, showMehr ? '✕' : '☰'), ['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'export'].includes(page) ? PAGES.find(p => p.id === page)?.label || 'Mehr' : 'Mehr'))));
+  }, showMehr ? '✕' : '☰'), ['bestellungen', 'inventur', 'stammdaten', 'pcm', 'tagesabschluss', 'schnell', 'kalkulation', 'planung', 'export'].includes(page) ? PAGES.find(p => p.id === page)?.label || 'Mehr' : 'Mehr'))));
 }
 ReactDOM.createRoot(document.getElementById('root')).render(React.createElement(App));
